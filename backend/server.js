@@ -439,5 +439,6 @@ app.get('/api/admin/debug-football-data/:league', async (req, res) => {
       response: error.response ? error.response.data : 'NO RESPONSE'
     });
   }
+});
 start()
 module.exports = app;
