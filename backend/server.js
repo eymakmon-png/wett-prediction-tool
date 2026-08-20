@@ -412,7 +412,6 @@ async function start() {
   });
 }
 
-start();
 // DEBUG ENDPOINT
 app.get('/api/admin/debug-football-data/:league', async (req, res) => {
   try {
@@ -440,5 +439,5 @@ app.get('/api/admin/debug-football-data/:league', async (req, res) => {
       response: error.response ? error.response.data : 'NO RESPONSE'
     });
   }
-});
+start()
 module.exports = app;
