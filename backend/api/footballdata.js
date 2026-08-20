@@ -152,7 +152,7 @@ async function syncMatches(leagueCode = 'BL1', status = 'SCHEDULED') {
            RETURNING id`,
           [
             match.id,                    // match_id (string von API)
-            match.season,                // season (z.B. 2024)
+            new Date(match.utcDate).getFullYear(),  // season (Jahr von match date)
             round,                       // round (Spielrunde, nicht Timestamp!) - FIX
             leagueCode,                  // competition
             homeTeamId,                  // home_team_id
@@ -261,7 +261,7 @@ async function syncFinishedMatches(leagueCode = 'BL1') {
            RETURNING id`,
           [
             match.id,
-            match.season,
+            new Date(match.utcDate).getFullYear(),
             round,
             leagueCode,
             homeTeamId,
