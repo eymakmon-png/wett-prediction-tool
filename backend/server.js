@@ -96,7 +96,7 @@ app.get('/api/status', async (req, res) => {
 // ============================================
 // SYNC DATA ENDPOINT (Admin)
 // ============================================
-app.post('/api/admin/sync-data', async (req, res) => {
+app.get('/api/admin/sync-data', async (req, res) =>{
   try {
     console.log('🔄 Starting full sync...');
     const result = await fullSync(['PL', 'BL1']);
