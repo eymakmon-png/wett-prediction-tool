@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { initDatabase, pool } = require('./database/init');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,7 +19,41 @@ app.use((req, res, next) => {
 });
 
 // ============================================
-// HEALTH CHECK ENDPOINT (for testing)
+// DATABASE INITIALIZATION (beim Start!)
+// ============================================
+let dbInitialized = false;
+
+async function startServer() {
+  try {
+    console.log('');
+    console.log('╔════════════════════════════════════════════╗');
+    console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
+    console.log('║  Initializing...                           ║');
+    console.log('╚════════════════════════════════════════════╝');
+    console.log('');
+    
+    // 1. Initialisiere Datenbank
+    console.log('📦 Step 1: Initializing Database...');
+    const dbReady = await initDatabase();
+    
+    if (dbReady) {
+      dbInitialized = true;
+      console.log('✓ Database ready!\n');
+    } else {
+      console.warn('⚠ Database initialization failed, but server will continue\n');
+    }
+    
+    // 2. Starte Server
+    console.log('🚀 Step 2: Starting Express Server...\n');
+    
+  } catch (error) {
+    console.error('Critical error during startup:', error);
+    process.exit(1);
+  }
+}
+
+// ============================================
+// HEALTH CHECK ENDPOINT
 // ============================================
 app.get('/health', (req, res) => {
   res.json({
@@ -26,15 +61,44 @@ app.get('/health', (req, res) => {
     message: 'Wett Prediction Tool API is running!',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    database: dbInitialized ? 'connected' : 'initializing'
   });
 });
 
 // ============================================
-// API ROUTES (Skeleton - werden später gebaut)
+// DATABASE STATUS ENDPOINT
 // ============================================
+app.get('/api/status', async (req, res) => {
+  try {
+    // Test database connection
+    const result = await pool.query('SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = \'public\'');
+    const tableCount = result.rows[0].table_count;
+    
+    res.json({
+      success: true,
+      database: {
+        status: 'connected',
+        tables_created: tableCount
+      },
+      server: {
+        status: 'running',
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Database connection failed',
+      message: error.message
+    });
+  }
+});
 
-// Matches Endpoints
+// ============================================
+// MATCHES ENDPOINTS (Skeleton)
+// ============================================
 app.get('/api/matches/today', (req, res) => {
   res.json({
     success: true,
@@ -64,7 +128,9 @@ app.get('/api/matches/league/:league/round/:round', (req, res) => {
   });
 });
 
-// Predictions Endpoints
+// ============================================
+// PREDICTIONS ENDPOINTS (Skeleton)
+// ============================================
 app.get('/api/predictions/:matchId', (req, res) => {
   const { matchId } = req.params;
   res.json({
@@ -83,7 +149,9 @@ app.get('/api/predictions/today', (req, res) => {
   });
 });
 
-// Teams Endpoints
+// ============================================
+// TEAMS ENDPOINTS (Skeleton)
+// ============================================
 app.get('/api/teams', (req, res) => {
   res.json({
     success: true,
@@ -102,7 +170,9 @@ app.get('/api/teams/:teamId', (req, res) => {
   });
 });
 
-// Performance Endpoints
+// ============================================
+// PERFORMANCE ENDPOINTS (Skeleton)
+// ============================================
 app.get('/api/performance/weekly', (req, res) => {
   res.json({
     success: true,
@@ -119,7 +189,9 @@ app.get('/api/performance/all-time', (req, res) => {
   });
 });
 
-// Manual Inputs Endpoints
+// ============================================
+// MANUAL INPUTS ENDPOINTS (Skeleton)
+// ============================================
 app.post('/api/manual-inputs', (req, res) => {
   res.json({
     success: true,
@@ -137,7 +209,9 @@ app.get('/api/manual-inputs/:matchId', (req, res) => {
   });
 });
 
-// Admin Endpoints
+// ============================================
+// ADMIN ENDPOINTS (Skeleton)
+// ============================================
 app.post('/api/admin/sync-data', (req, res) => {
   res.json({
     success: true,
@@ -170,22 +244,29 @@ app.use((req, res) => {
 // ============================================
 // START SERVER
 // ============================================
-app.listen(PORT, () => {
-  console.log('');
-  console.log('╔════════════════════════════════════════════╗');
-  console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
-  console.log('║  Status: ✓ Running                         ║');
-  console.log(`║  Port: ${PORT}                                    ║`);
-  console.log('║  Environment: ' + (process.env.NODE_ENV || 'development').padEnd(21) + '║');
-  console.log('║                                            ║');
-  console.log(`║  🏥 Health Check:                           ║`);
-  console.log(`║  http://localhost:${PORT}/health${' '.repeat(20 - PORT.toString().length)}║`);
-  console.log('║                                            ║');
-  console.log('║  📚 API Docs: Coming Soon                  ║');
-  console.log('║                                            ║');
-  console.log('╚════════════════════════════════════════════╝');
-  console.log('');
-});
+async function start() {
+  await startServer();
+  
+  app.listen(PORT, () => {
+    console.log('╔════════════════════════════════════════════╗');
+    console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
+    console.log('║  Status: ✓ Running                         ║');
+    console.log(`║  Port: ${PORT}                                    ║`);
+    console.log('║  Environment: ' + (process.env.NODE_ENV || 'development').padEnd(21) + '║');
+    console.log('║                                            ║');
+    console.log(`║  🏥 Health Check:                           ║`);
+    console.log(`║  https://your-url.railway.app/health       ║`);
+    console.log('║                                            ║');
+    console.log(`║  📊 Database Status:                        ║`);
+    console.log(`║  https://your-url.railway.app/api/status   ║`);
+    console.log('║                                            ║');
+    console.log('║  📚 API Docs: Coming Soon                  ║');
+    console.log('║                                            ║');
+    console.log('╚════════════════════════════════════════════╝');
+    console.log('');
+  });
+}
+
+start();
 
 module.exports = app;
-
