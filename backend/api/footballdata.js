@@ -137,7 +137,7 @@ async function syncMatches(leagueCode = 'BL1', status = 'SCHEDULED') {
 
         // FIX #2: Speichere korrekten round-Wert (Spielrunde, nicht Timestamp!)
         // Wenn match.round nicht existiert, speichere NULL
-        const round = match.matchday  null;
+        const round = match.matchday || null;
 
         const kickOffDate = match.utcDate ? new Date(match.utcDate) : null;
 
@@ -236,7 +236,7 @@ async function syncFinishedMatches(leagueCode = 'BL1') {
           continue;
         }
 
-        const round = match.matchday  null;
+        const round = match.matchday || null;
         const kickOffDate = match.utcDate ? new Date(match.utcDate) : null;
 
         // Speichere Match mit Ergebnissen
