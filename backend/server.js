@@ -413,5 +413,32 @@ async function start() {
 }
 
 start();
-debug_endpoint.js
+// DEBUG ENDPOINT
+app.get('/api/admin/debug-football-data/:league', async (req, res) => {
+  try {
+    const { league } = req.params;
+    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+    const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
+
+    console.log(`\n🔍 DEBUG: Fetching ${league}...`);
+    const response = await axios.get(
+      `${FOOTBALL_DATA_API}/competitions/${league}/standings`,
+      { headers: { 'X-Auth-Token': API_KEY } }
+    );
+
+    const teams = response.data.standings[0].table;
+    res.json({
+      success: true,
+      league: league,
+      teams_count: teams.length,
+      first_team: teams[0].team.name
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      response: error.response ? error.response.data : 'NO RESPONSE'
+    });
+  }
+});
 module.exports = app;
