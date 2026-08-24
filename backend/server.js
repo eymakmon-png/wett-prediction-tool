@@ -551,17 +551,5 @@ async function calculateOverUnder2_5(homeTeamId, awayTeamId) {
     return null;
   }
 }
-
-
-
-// ============================================
-// Export
-// ============================================
-module.exports = {
-  calculateWinProbability,
-  calculateOverUnder2_5,
-  calculateAllPredictions,
-  generateRecommendation
-};
 start()
 module.exports = app;
