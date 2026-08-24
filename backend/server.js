@@ -28,7 +28,7 @@ async function startServer() {
   try {
     console.log('');
     console.log('╔════════════════════════════════════════════╗');
-    console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
+    console.log('║  ⚽ WETT PREDICTION TOOL v2.0              ║');
     console.log('║  Initializing...                           ║');
     console.log('╚════════════════════════════════════════════╝');
     console.log('');
