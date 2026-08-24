@@ -452,6 +452,11 @@ app.get('/api/predictions/matches', async (req, res) => {
   }
 });
 
+// Serve Dashboard
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/../frontend/dashboard.html');
+});
+
 // ============================================
 // ERROR HANDLERS
 // ============================================
