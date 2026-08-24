@@ -432,27 +432,31 @@ app.get('/api/predictions/matches', async (req, res) => {
        WHERE status = 'SCHEDULED'
        ORDER BY kick_off ASC LIMIT 50`
     );
-    const predictions = [];
-    for (const match of matchesRes.rows) {
-      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
-      predictions.push({
-        match_id: match.id,
-        competition: match.competition,
-        kick_off: match.kick_off,
-        ...pred.predictions,
-        recommendations: pred.recommendation
-      });
-    }
-    res.json({
-      success: true,
-      count: predictions.length,
-      predictions
+   const predictions = [];
+for (const match of matchesRes.rows) {
+  const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+  if (pred && pred.predictions) {  ← CHECK!
+    predictions.push({
+      match_id: match.match_id,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      kick_off: match.kick_off,
+      status: match.status,
+      competition: match.competition,
+      ...pred.predictions,
+      recommendations: pred.recommendation
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
   }
+}
+res.json({
+  success: true,
+  count: predictions.length,
+  predictions
 });
-
+} catch (error) {
+  res.status(500).json({ success: false, error: error.message });
+}
+        
 // Get ALL predictions (auch FINISHED matches)
 app.get('/api/predictions/all', async (req, res) => {
   try {
