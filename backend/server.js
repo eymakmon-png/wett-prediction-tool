@@ -4,6 +4,7 @@ const cors = require('cors');
 const { initDatabase, pool } = require('./database/init');
 const { fullSync } = require('./api/footballdata');
 const axios = require('axios');
+const { calculateAllPredictions } = require('./engine/predictions');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
