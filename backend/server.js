@@ -412,7 +412,9 @@ async function start() {
     console.log('');
   });
 
+// ============================================
 // DEBUG ENDPOINT
+// ============================================
 app.get('/api/admin/debug-football-data/:league', async (req, res) => {
   try {
     const { league } = req.params;
