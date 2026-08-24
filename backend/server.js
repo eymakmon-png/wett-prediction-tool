@@ -446,7 +446,6 @@ app.get('/api/admin/debug-football-data/:league', async (req, res) => {
 // Win Probability + Over/Under 2.5 Goals
 // ============================================
 
-const { pool } = require('../database/init');
 
 // ============================================
 // FUNCTION: Calculate Win Probability (ELO-based)
