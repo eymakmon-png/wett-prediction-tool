@@ -438,7 +438,7 @@ app.get('/api/predictions/matches', async (req, res) => {
    const predictions = [];
 for (const match of matchesRes.rows) {
   const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
-  if (pred && pred.predictions) {  ← CHECK!
+if (pred && pred.predictions) {
     predictions.push({
       match_id: match.match_id,
       home_team: match.home_team,
