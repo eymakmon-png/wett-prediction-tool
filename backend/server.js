@@ -5,6 +5,7 @@ const { initDatabase, pool } = require('./database/init');
 const { fullSync } = require('./api/footballdata');
 const axios = require('axios');
 const { calculateAllPredictions } = require('./engine/predictions');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -454,7 +455,7 @@ app.get('/api/predictions/matches', async (req, res) => {
 
 // Serve Dashboard
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/../frontend/dashboard.html');
+  res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
 });
 
 // ============================================
