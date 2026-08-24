@@ -1,6 +1,6 @@
 // backend/api/footballdata.js
 // ============================================
-// FOOTBALL-DATA.ORG INTEGRATION - FIXED VERSION
+// FOOTBALL-DATA.ORG INTEGRATION - FIXED v2
 // Lädt ECHTE Matches in die Datenbank
 // ============================================
 
