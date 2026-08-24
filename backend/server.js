@@ -453,6 +453,48 @@ app.get('/api/predictions/matches', async (req, res) => {
   }
 });
 
+// Get ALL predictions (auch FINISHED matches)
+app.get('/api/predictions/all', async (req, res) => {
+  try {
+    const matchesRes = await pool.query(
+      `SELECT 
+        m.id,
+        m.match_id,
+        m.kick_off,
+        m.status,
+        m.competition,
+        ht.name as home_team,
+        at.name as away_team
+       FROM matches m
+       JOIN teams ht ON m.home_team_id = ht.id
+       JOIN teams at ON m.away_team_id = at.id
+       ORDER BY m.kick_off DESC
+       LIMIT 100`
+    );
+    const predictions = [];
+    for (const match of matchesRes.rows) {
+      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      predictions.push({
+        match_id: match.match_id,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        kick_off: match.kick_off,
+        status: match.status,
+        competition: match.competition,
+        ...pred.predictions,
+        recommendations: pred.recommendation
+      });
+    }
+    res.json({
+      success: true,
+      count: predictions.length,
+      predictions
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
