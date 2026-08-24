@@ -478,19 +478,21 @@ app.get('/api/predictions/all', async (req, res) => {
        ORDER BY m.kick_off DESC
        LIMIT 100`
     );
+    const predictions = [];
     for (const match of matchesRes.rows) {
-  const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
-  if (pred && pred.predictions) {
-    predictions.push({
-        match_id: match.match_id,
-        home_team: match.home_team,
-        away_team: match.away_team,
-        kick_off: match.kick_off,
-        status: match.status,
-        competition: match.competition,
-        ...pred.predictions,
-        recommendations: pred.recommendation
-      });
+      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      if (pred && pred.predictions) {
+        predictions.push({
+          match_id: match.match_id,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          kick_off: match.kick_off,
+          status: match.status,
+          competition: match.competition,
+          ...pred.predictions,
+          recommendations: pred.recommendation
+        });
+      }
     }
     res.json({
       success: true,
