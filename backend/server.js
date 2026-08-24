@@ -369,82 +369,6 @@ app.get('/api/teams/:league', async (req, res) => {
 });
 
 // ============================================
-// ERROR HANDLERS
-// ============================================
-app.use((err, req, res, next) => {
-  console.error('[ERROR]', err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal Server Error',
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    path: req.path,
-    method: req.method
-  });
-});
-
-// ============================================
-// START SERVER
-// ============================================
-async function start() {
-  await startServer();
-  
-  app.listen(PORT, () => {
-    console.log('╔════════════════════════════════════════════╗');
-    console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
-    console.log('║  Status: ✓ Running                         ║');
-    console.log(`║  Port: ${PORT}                                    ║`);
-    console.log('║  Environment: ' + (process.env.NODE_ENV || 'development').padEnd(21) + '║');
-    console.log('║                                            ║');
-    console.log(`║  📊 API Endpoints:                          ║`);
-    console.log(`║  GET /api/matches                           ║`);
-    console.log(`║  GET /api/matches/league/:league            ║`);
-    console.log(`║  GET /api/matches/upcoming                  ║`);
-    console.log(`║  POST /api/admin/sync-data                  ║`);
-    console.log('║                                            ║');
-    console.log('╚════════════════════════════════════════════╝');
-    console.log('');
-  });
-}
-
-// ============================================
-// DEBUG ENDPOINT
-// ============================================
-app.get('/api/admin/debug-football-data/:league', async (req, res) => {
-  try {
-    const { league } = req.params;
-    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
-    const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
-
-    console.log(`\n🔍 DEBUG: Fetching ${league}...`);
-    const response = await axios.get(
-      `${FOOTBALL_DATA_API}/competitions/${league}/standings`,
-      { headers: { 'X-Auth-Token': API_KEY } }
-    );
-
-    const teams = response.data.standings[0].table;
-    res.json({
-      success: true,
-      league: league,
-      teams_count: teams.length,
-      first_team: teams[0].team.name
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      response: error.response ? error.response.data : 'NO RESPONSE'
-    });
-  }
-});
-
-// ============================================
 // PREDICTIONS ENDPOINTS
 // ============================================
 app.get('/api/predictions/match/:matchId', async (req, res) => {
@@ -527,5 +451,82 @@ app.get('/api/predictions/matches', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ============================================
+// ERROR HANDLERS
+// ============================================
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    error: err.message || 'Internal Server Error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// ============================================
+// START SERVER
+// ============================================
+async function start() {
+  await startServer();
+  
+  app.listen(PORT, () => {
+    console.log('╔════════════════════════════════════════════╗');
+    console.log('║  ⚽ WETT PREDICTION TOOL v1.0              ║');
+    console.log('║  Status: ✓ Running                         ║');
+    console.log(`║  Port: ${PORT}                                    ║`);
+    console.log('║  Environment: ' + (process.env.NODE_ENV || 'development').padEnd(21) + '║');
+    console.log('║                                            ║');
+    console.log(`║  📊 API Endpoints:                          ║`);
+    console.log(`║  GET /api/matches                           ║`);
+    console.log(`║  GET /api/matches/league/:league            ║`);
+    console.log(`║  GET /api/matches/upcoming                  ║`);
+    console.log(`║  POST /api/admin/sync-data                  ║`);
+    console.log('║                                            ║');
+    console.log('╚════════════════════════════════════════════╝');
+    console.log('');
+  });
+}
+
+// ============================================
+// DEBUG ENDPOINT
+// ============================================
+app.get('/api/admin/debug-football-data/:league', async (req, res) => {
+  try {
+    const { league } = req.params;
+    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+    const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
+
+    console.log(`\n🔍 DEBUG: Fetching ${league}...`);
+    const response = await axios.get(
+      `${FOOTBALL_DATA_API}/competitions/${league}/standings`,
+      { headers: { 'X-Auth-Token': API_KEY } }
+    );
+
+    const teams = response.data.standings[0].table;
+    res.json({
+      success: true,
+      league: league,
+      teams_count: teams.length,
+      first_team: teams[0].team.name
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      response: error.response ? error.response.data : 'NO RESPONSE'
+    });
+  }
+});
+
 start()
 module.exports = app;
