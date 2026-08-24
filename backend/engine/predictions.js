@@ -183,7 +183,7 @@ function generateRecommendation(winProb, overUnder) {
     });
   }
 
-  if (underUnder.underProb > 65) {
+  if (overUnder.underProb > 65) {
     recommendations.push({
       type: 'UNDER_2_5',
       confidence: overUnder.underProb,
