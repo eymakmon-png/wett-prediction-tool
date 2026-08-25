@@ -428,6 +428,8 @@ res.json({
 } catch (error) {
   res.status(500).json({ success: false, error: error.message });
 }
+}),
+  
 app.get('/api/predictions/matches', async (req, res) => {
   try {
     const matchesRes = await pool.query(
@@ -459,6 +461,7 @@ res.json({
 } catch (error) {
   res.status(500).json({ success: false, error: error.message });
 }
+}),
         
 // Get ALL predictions (auch FINISHED matches)
 app.get('/api/predictions/all', async (req, res) => {
