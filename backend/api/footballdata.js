@@ -9,7 +9,7 @@ const { pool } = require('../database/init');
 
 const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
 const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
-
+console.log('🔑 API_KEY loaded:', API_KEY ? API_KEY.substring(0, 10) + '...' : 'UNDEFINED!');
 // Helper: Rate Limit beachten
 async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
