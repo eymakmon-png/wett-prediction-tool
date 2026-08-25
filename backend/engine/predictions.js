@@ -115,7 +115,7 @@ async function calculateOverUnder2_5(homeTeamId, awayTeamId) {
 // ============================================
 async function calculateAllPredictions(homeTeamId, awayTeamId, matchId = null) {
   try {
-    const winProb = await calculateWinProbability(homeTeamId, awayTeamId);
+    const winProb = await calculateImprovedWinProbability(homeTeamId, awayTeamId);
     const overUnder = await calculateOverUnder2_5(homeTeamId, awayTeamId);
 
     if (!winProb || !overUnder) {
