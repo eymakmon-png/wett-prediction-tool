@@ -91,7 +91,8 @@ async function syncMatches(leagueCode = 'BL1', status = 'SCHEDULED') {
     console.log(`\n🔄 [${leagueCode}] Loading ${status} matches...`);
     
     const response = await axios.get(
-      `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?status=${status}`,
+      const response = await axios.get(
+  `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?season=2026&status=${status}`,
       {
         headers: { 'X-Auth-Token': API_KEY },
         timeout: 10000
@@ -195,7 +196,7 @@ async function syncFinishedMatches(leagueCode = 'BL1') {
     console.log(`\n🔄 [${leagueCode}] Loading FINISHED matches with results...`);
     
     const response = await axios.get(
-      `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?status=FINISHED`,
+      `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?season=2026&status=FINISHED`,
       {
         headers: { 'X-Auth-Token': API_KEY },
         timeout: 10000
