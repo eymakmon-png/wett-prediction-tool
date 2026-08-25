@@ -312,6 +312,70 @@ async function calculateHeadToHead(homeTeamId, awayTeamId) {
 }
 
 // ============================================
+// FUNCTION: Calculate Improved Win Probability
+// ============================================
+async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
+  try {
+    // Get all factors
+    const eloProb = await calculateWinProbability(homeTeamId, awayTeamId);
+    const homeForm = await calculateTeamForm(homeTeamId);
+    const awayForm = await calculateTeamForm(awayTeamId);
+    const h2h = await calculateHeadToHead(homeTeamId, awayTeamId);
+    
+    if (!eloProb || !homeForm || !awayForm || !h2h) {
+      return eloProb;
+    }
+    
+    // Calculate weighted factors
+    const eloWeight = 0.40;
+    const formWeight = 0.30;
+    const h2hWeight = 0.20;
+    const homeAdvantageWeight = 0.10;
+    
+    // ELO Factor (40%)
+    const eloProbHome = eloProb.homeWinProb / 100;
+    
+    // Form Factor (30%) - Win percentage from last 5
+    const homeFormRating = (homeForm.wins / (homeForm.wins + homeForm.draws + homeForm.losses)) || 0.5;
+    const awayFormRating = (awayForm.wins / (awayForm.wins + awayForm.draws + awayForm.losses)) || 0.5;
+    const formProbHome = homeFormRating / (homeFormRating + awayFormRating);
+    
+    // Head-to-Head Factor (20%)
+    const h2hProbHome = h2h.totalMatches > 0 
+      ? (h2h.homeWins / h2h.totalMatches) 
+      : 0.5;
+    
+    // Home Advantage (10%)
+    const homeAdvantage = 0.55;
+    
+    // Combine all factors
+    const improvedProb = 
+      (eloProbHome * eloWeight) +
+      (formProbHome * formWeight) +
+      (h2hProbHome * h2hWeight) +
+      (homeAdvantage * homeAdvantageWeight);
+    
+    const drawProb = 0.25;
+    const awayWinProb = 1 - improvedProb - drawProb;
+    
+    return {
+      homeWinProb: parseFloat((improvedProb * 100).toFixed(2)),
+      drawProb: parseFloat((drawProb * 100).toFixed(2)),
+      awayWinProb: parseFloat((awayWinProb * 100).toFixed(2)),
+      factors: {
+        elo: parseFloat((eloProbHome * 100).toFixed(2)),
+        form: parseFloat((formProbHome * 100).toFixed(2)),
+        h2h: parseFloat((h2hProbHome * 100).toFixed(2)),
+        homeAdvantage: 55
+      }
+    };
+  } catch (error) {
+    console.error('Improved probability error:', error.message);
+    return null;
+  }
+}
+
+// ============================================
 // Export
 // ============================================
 module.exports = {
@@ -320,5 +384,6 @@ module.exports = {
   calculateAllPredictions,
   generateRecommendation,
   calculateTeamForm,
-  calculateHeadToHead
+  calculateHeadToHead,
+  calculateImprovedWinProbability
 };
