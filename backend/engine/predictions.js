@@ -258,6 +258,60 @@ async function calculateTeamForm(teamId) {
 }
 
 // ============================================
+// FUNCTION: Calculate Head-to-Head History
+// ============================================
+async function calculateHeadToHead(homeTeamId, awayTeamId) {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        home_team_id,
+        away_team_id,
+        home_goals,
+        away_goals,
+        kick_off
+       FROM matches 
+       WHERE (home_team_id = $1 AND away_team_id = $2)
+       OR (home_team_id = $2 AND away_team_id = $1)
+       AND status = 'FINISHED'
+       ORDER BY kick_off DESC
+       LIMIT 5`,
+      [homeTeamId, awayTeamId]
+    );
+    
+    if (result.rows.length === 0) {
+      return { homeWins: 0, draws: 0, awayWins: 0, totalMatches: 0, homeGoals: 0, awayGoals: 0 };
+    }
+    
+    let homeWins = 0, draws = 0, awayWins = 0, homeGoals = 0, awayGoals = 0;
+    
+    result.rows.forEach(match => {
+      const isHomeMatch = match.home_team_id === homeTeamId;
+      const team1Goals = isHomeMatch ? match.home_goals : match.away_goals;
+      const team2Goals = isHomeMatch ? match.away_goals : match.home_goals;
+      
+      homeGoals += team1Goals;
+      awayGoals += team2Goals;
+      
+      if (team1Goals > team2Goals) homeWins++;
+      else if (team1Goals === team2Goals) draws++;
+      else awayWins++;
+    });
+    
+    return {
+      homeWins,
+      draws,
+      awayWins,
+      totalMatches: result.rows.length,
+      homeGoals,
+      awayGoals
+    };
+  } catch (error) {
+    console.error('Head-to-Head error:', error.message);
+    return null;
+  }
+}
+
+// ============================================
 // Export
 // ============================================
 module.exports = {
@@ -265,5 +319,6 @@ module.exports = {
   calculateOverUnder2_5,
   calculateAllPredictions,
   generateRecommendation,
-  calculateTeamForm
+  calculateTeamForm,
+  calculateHeadToHead
 };
