@@ -470,6 +470,8 @@ app.get('/api/predictions/all', async (req, res) => {
       `SELECT 
         m.id,
         m.match_id,
+        m.home_team_id
+        m.away_team_id
         m.kick_off,
         m.status,
         m.competition,
