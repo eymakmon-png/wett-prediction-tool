@@ -23,7 +23,7 @@ async function syncTeams(leagueCode = 'BL1') {
     console.log(`\n🔄 [${leagueCode}] Loading teams...`);
     
     const response = await axios.get(
-     `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches`,
+       `${FOOTBALL_DATA_API}/competitions/${leagueCode}/standings`,
       {
         headers: { 'X-Auth-Token': API_KEY },
         timeout: 10000
