@@ -206,11 +206,64 @@ function calculateOddsNeeded(probability) {
 }
 
 // ============================================
+// FUNCTION: Calculate Team Form (Last 5 Matches)
+// ============================================
+async function calculateTeamForm(teamId) {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        home_goals,
+        away_goals,
+        status,
+        kick_off
+       FROM matches 
+       WHERE (home_team_id = $1 OR away_team_id = $1) 
+       AND status = 'FINISHED'
+       ORDER BY kick_off DESC
+       LIMIT 5`,
+      [teamId]
+    );
+    
+    if (result.rows.length === 0) {
+      return { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 };
+    }
+    
+    let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
+    
+    result.rows.forEach(match => {
+      const isHome = match.home_team_id === teamId;
+      const teamGoals = isHome ? match.home_goals : match.away_goals;
+      const opponentGoals = isHome ? match.away_goals : match.home_goals;
+      
+      goalsFor += teamGoals;
+      goalsAgainst += opponentGoals;
+      
+      if (teamGoals > opponentGoals) wins++;
+      else if (teamGoals === opponentGoals) draws++;
+      else losses++;
+    });
+    
+    return {
+      wins,
+      draws,
+      losses,
+      goalsFor,
+      goalsAgainst,
+      formRating: ((wins * 3 + draws) / 15) * 100
+    };
+  } catch (error) {
+    console.error('Team form error:', error.message);
+    return null;
+  }
+}
+
+// ============================================
 // Export
 // ============================================
 module.exports = {
   calculateWinProbability,
   calculateOverUnder2_5,
   calculateAllPredictions,
-  generateRecommendation
+  generateRecommendation,
+  calculateTeamForm
 };
