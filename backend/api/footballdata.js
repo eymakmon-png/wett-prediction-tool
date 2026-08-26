@@ -91,7 +91,6 @@ async function syncMatches(leagueCode = 'BL1', status = 'SCHEDULED') {
     console.log(`\n🔄 [${leagueCode}] Loading ${status} matches...`);
     
     const response = await axios.get(
-      const response = await axios.get(
   `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?season=2026&status=${status}`,
       {
         headers: { 'X-Auth-Token': API_KEY },
