@@ -480,7 +480,7 @@ app.get('/api/predictions/all', async (req, res) => {
        FROM matches m
        JOIN teams ht ON m.home_team_id = ht.id
        JOIN teams at ON m.away_team_id = at.id
-       WHERE m.status = 'SCHEDULED'
+       WHERE m.kick_off >= NOW()
        ORDER BY m.kick_off ASC
        LIMIT 100`
     );
