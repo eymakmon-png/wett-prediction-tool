@@ -480,7 +480,7 @@ app.get('/api/predictions/all', async (req, res) => {
        FROM matches m
        JOIN teams ht ON m.home_team_id = ht.id
        JOIN teams at ON m.away_team_id = at.id
-       ORDER BY m.kick_off DESC
+       ORDER BY m.kick_off ASC
        LIMIT 100`
     );
     const predictions = [];
