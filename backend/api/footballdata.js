@@ -97,7 +97,8 @@ async function syncMatches(leagueCode = 'BL1', status = 'SCHEDULED') {
         timeout: 10000
       }
     );
-
+    
+console.log(`🔍 [${leagueCode}] API Response first match date:`, response.data.matches?.[0]?.utcDate);
     if (!response.data.matches) {
       throw new Error('No matches data in API response');
     }
