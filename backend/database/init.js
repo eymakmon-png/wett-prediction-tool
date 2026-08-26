@@ -102,8 +102,22 @@ const schema = `
     created_by VARCHAR(50),
     created_at TIMESTAMP DEFAULT NOW()
   );
+  
+  -- 7. INJURIES TABELLE
+  CREATE TABLE IF NOT EXISTS injuries (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id),
+    player_name VARCHAR(255) NOT NULL,
+    position VARCHAR(50),
+    injury_type VARCHAR(255),
+    return_date VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'OUT',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(team_id, player_name)
+  );
 
-  -- 7. PERFORMANCE LOG TABELLE
+  -- 8. PERFORMANCE LOG TABELLE
   CREATE TABLE IF NOT EXISTS performance_log (
     id SERIAL PRIMARY KEY,
     prediction_id INTEGER REFERENCES predictions(id),
