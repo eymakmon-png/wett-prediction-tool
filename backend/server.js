@@ -15,7 +15,6 @@ const PORT = process.env.PORT || 3000;
 // ============================================
 app.use(cors());
 app.use(express.json());
-
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
@@ -25,7 +24,6 @@ app.use((req, res, next) => {
 // DATABASE INITIALIZATION
 // ============================================
 let dbInitialized = false;
-
 async function startServer() {
   try {
     console.log('');
@@ -102,7 +100,7 @@ app.get('/api/status', async (req, res) => {
 const { recordMatchResult, getLast10DaysPerformance, getLastMatchesPerformance, getAllTimePerformance } = require('./services/performanceTracker');
 const { recordAllFinishedMatches } = require('./services/performanceRecorder');
 
-// Manual trigger for performance recorder (TESTING ONLY!)
+// Manual trigger for performance recorder
 app.post('/api/admin/record-performance', async (req, res) => {
   try {
     console.log('🔄 Manual Performance Recording triggered...');
@@ -197,54 +195,6 @@ app.get('/api/performance/all-time', async (req, res) => {
   }
 });
 
-// Manual override prediction endpoint
-app.post('/api/admin/override-prediction', async (req, res) => {
-  try {
-    const { match_id, home_win_prob, draw_prob, away_win_prob, over_2_5_prob, under_2_5_prob } = req.body;
-
-    // Validation
-    if (!match_id || home_win_prob === undefined || draw_prob === undefined || away_win_prob === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields'
-      });
-    }
-
-    // Validate probabilities sum to ~1.0
-    const sum = home_win_prob + draw_prob + away_win_prob;
-    if (sum < 0.95 || sum > 1.05) {
-      return res.status(400).json({
-        success: false,
-        error: `Probabilities must sum to ~1.0 (got ${sum.toFixed(2)})`
-      });
-    }
-
-        // Update predictions table
-    const result = await pool.query(
-      `UPDATE predictions 
-       SET home_win_prob = $1, draw_prob = $2, away_win_prob = $3, 
-           over_2_5_prob = $4, updated_at = NOW()
-       WHERE match_id = $5
-       RETURNING id, match_id, home_win_prob, draw_prob, away_win_prob, over_2_5_prob`,
-      [home_win_prob, draw_prob, away_win_prob, over_2_5_prob, match_id]
-    );
-
-    console.log(`✓ Override: Match ${match_id} - Home: ${(home_win_prob*100).toFixed(1)}% Draw: ${(draw_prob*100).toFixed(1)}% Away: ${(away_win_prob*100).toFixed(1)}%`);
-
-    res.json({
-      success: true,
-      message: 'Prediction overridden successfully',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Override error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // Get Job Status
 app.get('/api/admin/job-status', async (req, res) => {
   try {
@@ -271,7 +221,7 @@ app.get('/api/admin/job-status', async (req, res) => {
 // ============================================
 // SYNC DATA ENDPOINT (Admin)
 // ============================================
-app.get('/api/admin/sync-data', async (req, res) =>{
+app.get('/api/admin/sync-data', async (req, res) => {
   try {
     console.log('🔄 Starting full sync...');
     const result = await fullSync(['PL', 'BL1']);
@@ -297,9 +247,8 @@ app.get('/api/admin/sync-data', async (req, res) =>{
 });
 
 // ============================================
-// MATCHES ENDPOINTS (ECHTE DATEN!)
+// MATCHES ENDPOINTS
 // ============================================
-
 // Get all matches
 app.get('/api/matches', async (req, res) => {
   try {
@@ -322,7 +271,6 @@ app.get('/api/matches', async (req, res) => {
       ORDER BY m.kick_off DESC
       LIMIT 50
     `);
-
     res.json({
       success: true,
       count: result.rows.length,
@@ -361,7 +309,6 @@ app.get('/api/matches/league/:league', async (req, res) => {
       ORDER BY m.kick_off DESC
       LIMIT 100
     `, [league.toUpperCase()]);
-
     res.json({
       success: true,
       league: league.toUpperCase(),
@@ -396,7 +343,6 @@ app.get('/api/matches/upcoming', async (req, res) => {
       ORDER BY m.kick_off ASC
       LIMIT 20
     `);
-
     res.json({
       success: true,
       count: result.rows.length,
@@ -434,7 +380,6 @@ app.get('/api/matches/finished/:league', async (req, res) => {
       ORDER BY m.kick_off DESC
       LIMIT 50
     `, [league.toUpperCase()]);
-
     res.json({
       success: true,
       league: league.toUpperCase(),
@@ -472,14 +417,12 @@ app.get('/api/matches/:matchId', async (req, res) => {
       JOIN teams at ON m.away_team_id = at.id
       WHERE m.match_id = $1
     `, [matchId]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Match not found'
       });
     }
-
     res.json({
       success: true,
       data: result.rows[0]
@@ -495,7 +438,6 @@ app.get('/api/matches/:matchId', async (req, res) => {
 // ============================================
 // TEAMS ENDPOINTS
 // ============================================
-
 app.get('/api/teams', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -503,7 +445,6 @@ app.get('/api/teams', async (req, res) => {
       FROM teams
       ORDER BY league, points_for_season DESC
     `);
-
     res.json({
       success: true,
       count: result.rows.length,
@@ -527,7 +468,6 @@ app.get('/api/teams/:league', async (req, res) => {
       WHERE league = $1
       ORDER BY points_for_season DESC
     `, [league.toUpperCase()]);
-
     res.json({
       success: true,
       league: league.toUpperCase(),
@@ -578,31 +518,31 @@ app.get('/api/predictions/league/:league', async (req, res) => {
       [league]
     );
     const predictions = [];
-for (const match of matchesRes.rows) {
-  const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
-  if (pred && pred.predictions) {
-    predictions.push({
-      match_id: match.match_id,
-      home_team: match.home_team,
-      away_team: match.away_team,
-      kick_off: match.kick_off,
-      status: match.status,
-      competition: match.competition,
-      ...pred.predictions,
-      recommendations: pred.recommendation
+    for (const match of matchesRes.rows) {
+      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      if (pred && pred.predictions) {
+        predictions.push({
+          match_id: match.match_id,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          kick_off: match.kick_off,
+          status: match.status,
+          competition: match.competition,
+          ...pred.predictions,
+          recommendations: pred.recommendation
+        });
+      }
+    }
+    res.json({
+      success: true,
+      count: predictions.length,
+      predictions
     });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-}
-res.json({
-  success: true,
-  count: predictions.length,
-  predictions
 });
-} catch (error) {
-  res.status(500).json({ success: false, error: error.message });
-}
-}),
-  
+
 app.get('/api/predictions/matches', async (req, res) => {
   try {
     const matchesRes = await pool.query(
@@ -610,33 +550,33 @@ app.get('/api/predictions/matches', async (req, res) => {
        WHERE status = 'SCHEDULED'
        ORDER BY kick_off ASC LIMIT 50`
     );
-   const predictions = [];
-for (const match of matchesRes.rows) {
-  const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
-if (pred && pred.predictions) {
-    predictions.push({
-      match_id: match.match_id,
-      home_team: match.home_team,
-      away_team: match.away_team,
-      kick_off: match.kick_off,
-      status: match.status,
-      competition: match.competition,
-      ...pred.predictions,
-      recommendations: pred.recommendation
+    const predictions = [];
+    for (const match of matchesRes.rows) {
+      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      if (pred && pred.predictions) {
+        predictions.push({
+          match_id: match.match_id,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          kick_off: match.kick_off,
+          status: match.status,
+          competition: match.competition,
+          ...pred.predictions,
+          recommendations: pred.recommendation
+        });
+      }
+    }
+    res.json({
+      success: true,
+      count: predictions.length,
+      predictions
     });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-}
-res.json({
-  success: true,
-  count: predictions.length,
-  predictions
 });
-} catch (error) {
-  res.status(500).json({ success: false, error: error.message });
-}
-}),
-        
-// Get ALL predictions (auch FINISHED matches)
+
+// Get ALL predictions
 app.get('/api/predictions/all', async (req, res) => {
   try {
     const matchesRes = await pool.query(
@@ -741,13 +681,11 @@ app.get('/api/admin/debug-football-data/:league', async (req, res) => {
     const { league } = req.params;
     const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
     const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
-
     console.log(`\n🔍 DEBUG: Fetching ${league}...`);
     const response = await axios.get(
       `${FOOTBALL_DATA_API}/competitions/${league}/standings`,
       { headers: { 'X-Auth-Token': API_KEY } }
     );
-
     const teams = response.data.standings[0].table;
     res.json({
       success: true,
@@ -764,5 +702,5 @@ app.get('/api/admin/debug-football-data/:league', async (req, res) => {
   }
 });
 
-start()
+start();
 module.exports = app;
