@@ -72,11 +72,11 @@ async function recordMatchResult(matchId, homeGoals, awayGoals, predictedWinner,
   }
 }
 
-// Get weekly performance
-async function getWeeklyPerformance() {
+// Get last 10 days performance
+async function getLast10DaysPerformance() {
   try {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
     
     const result = await pool.query(
       `SELECT 
@@ -86,39 +86,17 @@ async function getWeeklyPerformance() {
         AVG(CASE WHEN prediction_correct THEN 1 ELSE 0 END) * 100 as accuracy_percent
        FROM performance_log
        WHERE created_at >= $1`,
-      [weekAgo]
+      [tenDaysAgo]
     );
     
     return result.rows[0] || { total_predictions: 0, correct_predictions: 0, total_profit_loss: 0, accuracy_percent: 0 };
   } catch (error) {
-    console.error('Error getting weekly performance:', error.message);
+    console.error('Error getting last 10 days performance:', error.message);
     return null;
   }
 }
 
-// Get all-time performance
-async function getAllTimePerformance() {
+// Get last N matches performance
+async function getLastMatchesPerformance(limit = 10) {
   try {
-    const result = await pool.query(
-      `SELECT 
-        COUNT(*) as total_predictions,
-        SUM(CASE WHEN prediction_correct THEN 1 ELSE 0 END) as correct_predictions,
-        SUM(profit_loss) as total_profit_loss,
-        AVG(CASE WHEN prediction_correct THEN 1 ELSE 0 END) * 100 as accuracy_percent,
-        MIN(created_at) as first_prediction,
-        MAX(created_at) as last_prediction
-       FROM performance_log`
-    );
-    
-    return result.rows[0] || { total_predictions: 0, correct_predictions: 0, total_profit_loss: 0, accuracy_percent: 0 };
-  } catch (error) {
-    console.error('Error getting all-time performance:', error.message);
-    return null;
-  }
-}
-
-module.exports = {
-  recordMatchResult,
-  getWeeklyPerformance,
-  getAllTimePerformance
-};
+    const
