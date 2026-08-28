@@ -117,32 +117,52 @@ const schema = `
     UNIQUE(team_id, player_name)
   );
   
-  -- 7b. JOB LOGS TABELLE
-  CREATE TABLE IF NOT EXISTS job_logs (
-    id SERIAL PRIMARY KEY,
-    job_name VARCHAR(100) NOT NULL,
-    status VARCHAR(20) DEFAULT 'RUNNING',
-    started_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    duration_ms INTEGER,
-    error_message TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-  
-  CREATE INDEX IF NOT EXISTS idx_job_logs_job_name ON job_logs(job_name);
-  CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at);
-  -- 8. PERFORMANCE LOG TABELLE
-  CREATE TABLE IF NOT EXISTS performance_log (
-    id SERIAL PRIMARY KEY,
-    prediction_id INTEGER REFERENCES predictions(id),
-    match_result VARCHAR(20),
-    actual_home_goals INTEGER,
-    actual_away_goals INTEGER,
-    prediction_correct BOOLEAN,
-    profit_loss FLOAT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
+ -- 7b. JOB LOGS TABELLE
+CREATE TABLE IF NOT EXISTS job_logs (
+  id SERIAL PRIMARY KEY,
+  job_name VARCHAR(100) NOT NULL,
+  status VARCHAR(20) DEFAULT 'RUNNING',
+  started_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP,
+  duration_ms INTEGER,
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_job_logs_job_name ON job_logs(job_name);
+CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at);
 
+-- 7c. PLAYER PERFORMANCE TABELLE
+CREATE TABLE IF NOT EXISTS player_performance (
+  id SERIAL PRIMARY KEY,
+  match_id INTEGER REFERENCES matches(id),
+  player_id INTEGER REFERENCES players(id),
+  player_name VARCHAR(255) NOT NULL,
+  team_id INTEGER REFERENCES teams(id),
+  rating FLOAT DEFAULT 0,
+  goals INTEGER DEFAULT 0,
+  assists INTEGER DEFAULT 0,
+  source VARCHAR(50) DEFAULT 'sofascore',
+  scraped_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(match_id, player_id, source)
+);
+CREATE INDEX IF NOT EXISTS idx_player_performance_match ON player_performance(match_id);
+CREATE INDEX IF NOT EXISTS idx_player_performance_player ON player_performance(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_performance_team ON player_performance(team_id);
+
+-- 8. PERFORMANCE LOG TABELLE
+CREATE TABLE IF NOT EXISTS performance_log (
+  id SERIAL PRIMARY KEY,
+  prediction_id INTEGER REFERENCES predictions(id),
+  match_result VARCHAR(20),
+  actual_home_goals INTEGER,
+  actual_away_goals INTEGER,
+  prediction_correct BOOLEAN,
+  profit_loss FLOAT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_performance_log_prediction ON performance_log(prediction_id);
+CREATE INDEX IF NOT EXISTS idx_performance_log_created ON performance_log(created_at);
   -- INDEXES für schnelle Abfragen
   CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
   CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
