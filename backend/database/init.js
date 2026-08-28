@@ -103,7 +103,7 @@ const schema = `
     created_at TIMESTAMP DEFAULT NOW()
   );
   
-  -- 7. INJURIES TABELLE
+  -- 7a. INJURIES TABELLE
   CREATE TABLE IF NOT EXISTS injuries (
     id SERIAL PRIMARY KEY,
     team_id INTEGER REFERENCES teams(id),
@@ -116,7 +116,21 @@ const schema = `
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(team_id, player_name)
   );
-
+  
+  -- 7b. JOB LOGS TABELLE
+  CREATE TABLE IF NOT EXISTS job_logs (
+    id SERIAL PRIMARY KEY,
+    job_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) DEFAULT 'RUNNING',
+    started_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    duration_ms INTEGER,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+  
+  CREATE INDEX IF NOT EXISTS idx_job_logs_job_name ON job_logs(job_name);
+  CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at);
   -- 8. PERFORMANCE LOG TABELLE
   CREATE TABLE IF NOT EXISTS performance_log (
     id SERIAL PRIMARY KEY,
@@ -158,6 +172,5 @@ async function initDatabase() {
     return false;
   }
 }
-
 // Export
 module.exports = { initDatabase, pool };
