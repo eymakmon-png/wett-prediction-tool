@@ -99,7 +99,7 @@ app.get('/api/status', async (req, res) => {
 // ============================================
 // PERFORMANCE TRACKING ENDPOINTS
 // ============================================
-const { recordMatchResult, getWeeklyPerformance, getAllTimePerformance } = require('./services/performanceTracker');
+const { recordMatchResult, getLast10DaysPerformance, getLastMatchesPerformance, getAllTimePerformance } = require('./services/performanceTracker');
 
 // Record match result
 app.post('/api/performance/record', async (req, res) => {
@@ -121,14 +121,34 @@ app.post('/api/performance/record', async (req, res) => {
   }
 });
 
-// Get weekly performance
-app.get('/api/performance/weekly', async (req, res) => {
+// Get last 10 days performance
+app.get('/api/performance/last-10-days', async (req, res) => {
   try {
-    const data = await getWeeklyPerformance();
+    const data = await getLast10DaysPerformance();
     
     res.json({
       success: true,
-      period: 'weekly',
+      period: 'last-10-days',
+      data: data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get last N matches performance
+app.get('/api/performance/last-matches', async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+    const data = await getLastMatchesPerformance(limit);
+    
+    res.json({
+      success: true,
+      period: 'last-matches',
+      limit: limit,
       data: data
     });
   } catch (error) {
