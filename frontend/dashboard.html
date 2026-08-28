@@ -71,14 +71,31 @@
     let allMatches = [];
     let currentFilter = 'ALL';
 
+    // Transform API response to match dashboard structure
+    function transformPredictions(predictions) {
+      return predictions.map(p => ({
+        ...p,
+        win_probability: {
+          homeWinProb: (p.home_win_prob * 100).toFixed(1),
+          drawProb: (p.draw_prob * 100).toFixed(1),
+          awayWinProb: (p.away_win_prob * 100).toFixed(1)
+        },
+        over_under_2_5: {
+          overProb: (p.over_2_5_prob * 100).toFixed(1),
+          underProb: (p.under_2_5_prob * 100).toFixed(1),
+          expectedTotalGoals: ((p.over_2_5_prob + p.under_2_5_prob) / 2 * 3).toFixed(1)
+        }
+      }));
+    }
+    
     // Fetch Predictions
     async function loadPredictions() {
       try {
         const response = await fetch('/api/predictions/all');
         const data = await response.json();
         
-        if (data.success) {
-          allMatches = data.predictions || [];
+     if (data.success) {
+          allMatches = transformPredictions(data.predictions || []);
           document.getElementById('status').textContent = `✓ ${allMatches.length} Spiele geladen`;
           document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
           renderMatches();
