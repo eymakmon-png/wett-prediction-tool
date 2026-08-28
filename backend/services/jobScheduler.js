@@ -6,6 +6,7 @@ const cron = require('node-cron');
 const { fullSync } = require('../api/footballdata');
 const { scrapeAllInjuries } = require('./transfermarktScraper');
 const { scrapeAllPlayerForms } = require('./flashscoreScraper');
+const { scrapeAllPlayerPerformances } = require('./sofascoreScraper');
 const { logJobStart, logJobSuccess, logJobError } = require('./jobLogger');
 
 console.log('⏰ Initializing Job Scheduler...');
@@ -111,10 +112,34 @@ cron.schedule('0 8 * * *', async () => {
   }
 });
 
+// Job 5: Sofascore Player Performance at 09:00 UTC
+cron.schedule('0 9 * * *', async () => {
+  const startTime = Date.now();
+  let jobId = null;
+  
+  try {
+    jobId = await logJobStart('Sofascore-Performance');
+    
+    const result = await scrapeAllPlayerPerformances();
+    const duration = Date.now() - startTime;
+    
+    if (result) {
+      await logJobSuccess(jobId, 'Sofascore-Performance', duration);
+    } else {
+      await logJobError(jobId, 'Sofascore-Performance', 'Scraper returned false', duration);
+    }
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error('✗ Sofascore Performance error:', error.message);
+    await logJobError(jobId, 'Sofascore-Performance', error.message, duration);
+  }
+});
+
 console.log('✓ Job Scheduler initialized!');
 console.log('  📅 06:00 UTC - Auto Sync');
 console.log('  🏥 07:00 UTC - Transfermarkt Scraper');
 console.log('  ⭐ 08:00 UTC - Player Form Scraper');
+console.log('  🎯 09:00 UTC - Sofascore Performance');
 console.log('  📊 18:00 UTC - Auto Predictions\n');
 
 module.exports = {
