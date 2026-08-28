@@ -96,6 +96,29 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// Get Job Status
+app.get('/api/admin/job-status', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT job_name, status, started_at, completed_at, duration_ms, error_message
+       FROM job_logs
+       ORDER BY started_at DESC
+       LIMIT 100`
+    );
+    
+    res.json({
+      success: true,
+      count: result.rows.length,
+      jobs: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ============================================
 // SYNC DATA ENDPOINT (Admin)
 // ============================================
