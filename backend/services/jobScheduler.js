@@ -165,7 +165,7 @@ console.log('  🏥 07:00 UTC - Transfermarkt Scraper');
 console.log('  ⭐ 08:00 UTC - Player Form Scraper');
 console.log('  🎯 09:00 UTC - Sofascore Performance');
 console.log('  📊 10:00 UTC - Performance Recorder');
-console.log('  📈 18:00 UTC - Auto Predictions\n');;
+console.log('  📈 18:00 UTC - Auto Predictions\n');
 
 module.exports = {
   // Export für Tests falls nötig
