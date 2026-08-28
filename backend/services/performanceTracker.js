@@ -99,4 +99,53 @@ async function getLast10DaysPerformance() {
 // Get last N matches performance
 async function getLastMatchesPerformance(limit = 10) {
   try {
-    const
+    const result = await pool.query(
+      `SELECT 
+        COUNT(*) as total_predictions,
+        SUM(CASE WHEN prediction_correct THEN 1 ELSE 0 END) as correct_predictions,
+        SUM(profit_loss) as total_profit_loss,
+        AVG(CASE WHEN prediction_correct THEN 1 ELSE 0 END) * 100 as accuracy_percent,
+        MAX(created_at) as last_match,
+        MIN(created_at) as first_match
+       FROM (
+         SELECT * FROM performance_log 
+         ORDER BY created_at DESC 
+         LIMIT $1
+       ) as recent`,
+      [limit]
+    );
+    
+    return result.rows[0] || { total_predictions: 0, correct_predictions: 0, total_profit_loss: 0, accuracy_percent: 0 };
+  } catch (error) {
+    console.error('Error getting last matches performance:', error.message);
+    return null;
+  }
+}
+
+// Get all-time performance
+async function getAllTimePerformance() {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        COUNT(*) as total_predictions,
+        SUM(CASE WHEN prediction_correct THEN 1 ELSE 0 END) as correct_predictions,
+        SUM(profit_loss) as total_profit_loss,
+        AVG(CASE WHEN prediction_correct THEN 1 ELSE 0 END) * 100 as accuracy_percent,
+        MIN(created_at) as first_prediction,
+        MAX(created_at) as last_prediction
+       FROM performance_log`
+    );
+    
+    return result.rows[0] || { total_predictions: 0, correct_predictions: 0, total_profit_loss: 0, accuracy_percent: 0 };
+  } catch (error) {
+    console.error('Error getting all-time performance:', error.message);
+    return null;
+  }
+}
+
+module.exports = {
+  recordMatchResult,
+  getLast10DaysPerformance,
+  getLastMatchesPerformance,
+  getAllTimePerformance
+};
