@@ -96,6 +96,67 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// ============================================
+// PERFORMANCE TRACKING ENDPOINTS
+// ============================================
+const { recordMatchResult, getWeeklyPerformance, getAllTimePerformance } = require('./services/performanceTracker');
+
+// Record match result
+app.post('/api/performance/record', async (req, res) => {
+  try {
+    const { matchId, homeGoals, awayGoals, predictedWinner, predictedOver25 } = req.body;
+    
+    const result = await recordMatchResult(matchId, homeGoals, awayGoals, predictedWinner, predictedOver25);
+    
+    res.json({
+      success: true,
+      message: 'Match result recorded',
+      data: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get weekly performance
+app.get('/api/performance/weekly', async (req, res) => {
+  try {
+    const data = await getWeeklyPerformance();
+    
+    res.json({
+      success: true,
+      period: 'weekly',
+      data: data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get all-time performance
+app.get('/api/performance/all-time', async (req, res) => {
+  try {
+    const data = await getAllTimePerformance();
+    
+    res.json({
+      success: true,
+      period: 'all-time',
+      data: data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get Job Status
 app.get('/api/admin/job-status', async (req, res) => {
   try {
