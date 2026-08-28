@@ -219,22 +219,15 @@ app.post('/api/admin/override-prediction', async (req, res) => {
       });
     }
 
-    // Update predictions table
+        // Update predictions table
     const result = await pool.query(
       `UPDATE predictions 
        SET home_win_prob = $1, draw_prob = $2, away_win_prob = $3, 
-           over_2_5_prob = $4, under_2_5_prob = $5, updated_at = NOW()
-       WHERE match_id = $6
-       RETURNING id, match_id, home_win_prob, draw_prob, away_win_prob`,
-      [home_win_prob, draw_prob, away_win_prob, over_2_5_prob, under_2_5_prob, match_id]
+           over_2_5_prob = $4, updated_at = NOW()
+       WHERE match_id = $5
+       RETURNING id, match_id, home_win_prob, draw_prob, away_win_prob, over_2_5_prob`,
+      [home_win_prob, draw_prob, away_win_prob, over_2_5_prob, match_id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Prediction not found for this match'
-      });
-    }
 
     console.log(`✓ Override: Match ${match_id} - Home: ${(home_win_prob*100).toFixed(1)}% Draw: ${(draw_prob*100).toFixed(1)}% Away: ${(away_win_prob*100).toFixed(1)}%`);
 
