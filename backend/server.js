@@ -197,6 +197,61 @@ app.get('/api/performance/all-time', async (req, res) => {
   }
 });
 
+// Manual override prediction endpoint
+app.post('/api/admin/override-prediction', async (req, res) => {
+  try {
+    const { match_id, home_win_prob, draw_prob, away_win_prob, over_2_5_prob, under_2_5_prob } = req.body;
+
+    // Validation
+    if (!match_id || home_win_prob === undefined || draw_prob === undefined || away_win_prob === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields'
+      });
+    }
+
+    // Validate probabilities sum to ~1.0
+    const sum = home_win_prob + draw_prob + away_win_prob;
+    if (sum < 0.95 || sum > 1.05) {
+      return res.status(400).json({
+        success: false,
+        error: `Probabilities must sum to ~1.0 (got ${sum.toFixed(2)})`
+      });
+    }
+
+    // Update predictions table
+    const result = await pool.query(
+      `UPDATE predictions 
+       SET home_win_prob = $1, draw_prob = $2, away_win_prob = $3, 
+           over_2_5_prob = $4, under_2_5_prob = $5, updated_at = NOW()
+       WHERE match_id = $6
+       RETURNING id, match_id, home_win_prob, draw_prob, away_win_prob`,
+      [home_win_prob, draw_prob, away_win_prob, over_2_5_prob, under_2_5_prob, match_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prediction not found for this match'
+      });
+    }
+
+    console.log(`✓ Override: Match ${match_id} - Home: ${(home_win_prob*100).toFixed(1)}% Draw: ${(draw_prob*100).toFixed(1)}% Away: ${(away_win_prob*100).toFixed(1)}%`);
+
+    res.json({
+      success: true,
+      message: 'Prediction overridden successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Override error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get Job Status
 app.get('/api/admin/job-status', async (req, res) => {
   try {
