@@ -100,6 +100,26 @@ app.get('/api/status', async (req, res) => {
 // PERFORMANCE TRACKING ENDPOINTS
 // ============================================
 const { recordMatchResult, getLast10DaysPerformance, getLastMatchesPerformance, getAllTimePerformance } = require('./services/performanceTracker');
+const { recordAllFinishedMatches } = require('./services/performanceRecorder');
+
+// Manual trigger for performance recorder (TESTING ONLY!)
+app.post('/api/admin/record-performance', async (req, res) => {
+  try {
+    console.log('🔄 Manual Performance Recording triggered...');
+    const result = await recordAllFinishedMatches();
+    
+    res.json({
+      success: true,
+      message: 'Performance recording executed',
+      result: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // Record match result
 app.post('/api/performance/record', async (req, res) => {
