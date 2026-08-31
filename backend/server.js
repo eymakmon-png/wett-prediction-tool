@@ -219,7 +219,7 @@ app.get('/api/admin/job-status', async (req, res) => {
   }
 });
 
-// Save all predictions (finished + upcoming)
+// Save all predictions (finished + upcoming) - DEBUG
 app.get('/api/admin/save-all-predictions', async (req, res) => {
   try {
     console.log('💾 Saving all predictions...');
@@ -238,21 +238,39 @@ app.get('/api/admin/save-all-predictions', async (req, res) => {
        LIMIT 200`
     );
 
+    console.log(`Found ${matchesRes.rows.length} matches`);
+    
     let savedCount = 0;
+    let errorCount = 0;
+    
     for (const match of matchesRes.rows) {
       const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      
+      // DEBUG: Log what we get
+      console.log(`Match ${match.match_id}: pred exists = ${!!pred}, pred.predictions exists = ${!!pred?.predictions}`);
+      
       if (pred && pred.predictions) {
         const result = await savePredictions(match.id, match.home_team_id, match.away_team_id, pred);
-        if (result) savedCount++;
+        if (result) {
+          savedCount++;
+        } else {
+          errorCount++;
+          console.log(`  ✗ savePredictions returned false for ${match.match_id}`);
+        }
+      } else {
+        console.log(`  ⚠ No predictions for ${match.match_id}`);
       }
     }
 
     res.json({
       success: true,
-      message: 'All predictions saved',
-      saved_count: savedCount
+      message: 'All predictions processed',
+      saved_count: savedCount,
+      error_count: errorCount,
+      total_matches: matchesRes.rows.length
     });
   } catch (error) {
+    console.error('Error:', error.message);
     res.status(500).json({
       success: false,
       error: error.message
