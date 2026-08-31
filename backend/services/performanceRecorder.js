@@ -27,7 +27,8 @@ async function recordAllFinishedMatches() {
     predSample.rows.forEach(p => console.log(`  - pred.id=${p.id}, pred.match_id=${p.match_id}`));
     
     console.log('🔍 Sample finished matches:');
-    finishedSample.rows.forEach(m => console.log(`  - match.id=${m.id}`));
+    const finishedSampleWithMatchId = await pool.query('SELECT id, match_id FROM matches WHERE status = \'FINISHED\' LIMIT 3');
+    finishedSampleWithMatchId.rows.forEach(m => console.log(`  - match.id=${m.id}, match.match_id=${m.match_id}`));
     
     // Get all FINISHED matches with predictions but WITHOUT performance_log entry
     const matchesRes = await pool.query(
