@@ -11,11 +11,22 @@ async function recordAllFinishedMatches() {
     console.log('║  📊 PERFORMANCE RECORDER START        ║');
     console.log('╚════════════════════════════════════════╝');
     
-    // Get all FINISHED matches without performance_log entry
+    // Get all FINISHED matches with predictions but WITHOUT performance_log entry
     const matchesRes = await pool.query(
-      `SELECT m.id, m.match_id, m.home_goals, m.away_goals, m.status
+      `SELECT 
+        m.id, 
+        m.match_id, 
+        m.home_goals, 
+        m.away_goals, 
+        m.status,
+        pred.id as prediction_id,
+        pred.home_win_prob,
+        pred.draw_prob,
+        pred.away_win_prob,
+        pred.over_2_5_prob
        FROM matches m
-       LEFT JOIN performance_log pl ON m.id = pl.prediction_id
+       JOIN predictions pred ON m.id = pred.match_id
+       LEFT JOIN performance_log pl ON pred.id = pl.prediction_id
        WHERE m.status = 'FINISHED'
        AND pl.id IS NULL
        ORDER BY m.kick_off DESC
@@ -30,27 +41,11 @@ async function recordAllFinishedMatches() {
     
     for (const match of matches) {
       try {
-        // Get prediction for this match
-        const predRes = await pool.query(
-          `SELECT home_win_prob, draw_prob, away_win_prob, over_2_5_prob
-           FROM predictions
-           WHERE match_id = $1
-           LIMIT 1`,
-          [match.id]
-        );
-        
-        if (predRes.rows.length === 0) {
-          console.log(`   ⚠ No prediction for match ${match.match_id}`);
-          continue;
-        }
-        
-        const pred = predRes.rows[0];
-        
         // Determine predicted winner (highest probability)
         const probs = {
-          HOME: pred.home_win_prob,
-          DRAW: pred.draw_prob,
-          AWAY: pred.away_win_prob
+          HOME: match.home_win_prob,
+          DRAW: match.draw_prob,
+          AWAY: match.away_win_prob
         };
         
         const predictedWinner = Object.keys(probs).reduce((a, b) => 
@@ -58,7 +53,7 @@ async function recordAllFinishedMatches() {
         );
         
         // Determine predicted over/under
-        const predictedOver25 = pred.over_2_5_prob > 0.5;
+        const predictedOver25 = match.over_2_5_prob > 0.5;
         
         // Record the result
         await recordMatchResult(
