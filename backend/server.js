@@ -102,7 +102,7 @@ const { recordAllFinishedMatches } = require('./services/performanceRecorder');
 const { savePredictions } = require('./services/savePredictions');
 
 // Manual trigger for performance recorder
-app.post('/api/admin/record-performance', async (req, res) => {
+app.get('/api/admin/record-performance', async (req, res) => {
   try {
     console.log('🔄 Manual Performance Recording triggered...');
     const result = await recordAllFinishedMatches();
