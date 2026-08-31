@@ -219,6 +219,47 @@ app.get('/api/admin/job-status', async (req, res) => {
   }
 });
 
+// Save all predictions (finished + upcoming)
+app.get('/api/admin/save-all-predictions', async (req, res) => {
+  try {
+    console.log('💾 Saving all predictions...');
+    const matchesRes = await pool.query(
+      `SELECT 
+        m.id,
+        m.match_id,
+        m.home_team_id,
+        m.away_team_id,
+        ht.name as home_team,
+        at.name as away_team
+       FROM matches m
+       JOIN teams ht ON m.home_team_id = ht.id
+       JOIN teams at ON m.away_team_id = at.id
+       ORDER BY m.kick_off DESC
+       LIMIT 200`
+    );
+
+    let savedCount = 0;
+    for (const match of matchesRes.rows) {
+      const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
+      if (pred && pred.predictions) {
+        const result = await savePredictions(match.id, match.home_team_id, match.away_team_id, pred);
+        if (result) savedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'All predictions saved',
+      saved_count: savedCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ============================================
 // SYNC DATA ENDPOINT (Admin)
 // ============================================
