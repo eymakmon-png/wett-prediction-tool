@@ -99,6 +99,7 @@ app.get('/api/status', async (req, res) => {
 // ============================================
 const { recordMatchResult, getLast10DaysPerformance, getLastMatchesPerformance, getAllTimePerformance } = require('./services/performanceTracker');
 const { recordAllFinishedMatches } = require('./services/performanceRecorder');
+const { savePredictions } = require('./services/savePredictions');
 
 // Manual trigger for performance recorder
 app.post('/api/admin/record-performance', async (req, res) => {
