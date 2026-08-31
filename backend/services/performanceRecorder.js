@@ -31,7 +31,7 @@ async function recordAllFinishedMatches() {
     finishedSampleWithMatchId.rows.forEach(m => console.log(`  - match.id=${m.id}, match.match_id=${m.match_id}`));
     
     // Get all FINISHED matches with predictions but WITHOUT performance_log entry
-    const matchesRes = await pool.query(
+        const matchesRes = await pool.query(
       `SELECT 
         m.id, 
         m.match_id, 
@@ -44,10 +44,8 @@ async function recordAllFinishedMatches() {
         pred.away_win_prob,
         pred.over_2_5_prob
        FROM matches m
-       JOIN predictions pred ON m.match_id = pred.match_id
-       LEFT JOIN performance_log pl ON pred.id = pl.prediction_id
+       JOIN predictions pred ON m.id = pred.match_id
        WHERE m.status = 'FINISHED'
-       AND pl.id IS NULL
        LIMIT 50`
     );
     
