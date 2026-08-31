@@ -219,6 +219,22 @@ app.get('/api/admin/job-status', async (req, res) => {
   }
 });
 
+// Clear all predictions
+app.get('/api/admin/clear-predictions', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM predictions');
+    res.json({
+      success: true,
+      message: 'All predictions deleted'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Save all predictions (finished + upcoming) - DEBUG
 app.get('/api/admin/save-all-predictions', async (req, res) => {
   try {
