@@ -11,7 +11,6 @@
     .prediction-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     .win-prob { background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); }
     .over-prob { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
-    .strong { color: #059669; font-weight: bold; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
@@ -21,7 +20,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-3xl font-bold text-blue-600">⚽ WETT PREDICTION</h1>
-          <p class="text-gray-600 text-sm">Real-time Spielprognosen & Quoten</p>
+          <p class="text-gray-600 text-sm">Real-time Spielprognosen & Performance Tracking</p>
         </div>
         <div class="text-right">
           <p class="text-sm text-gray-600" id="status">Lädt Daten...</p>
@@ -30,6 +29,31 @@
       </div>
     </div>
   </header>
+
+  <!-- PERFORMANCE PANEL -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-8 text-white mb-6">
+      <h2 class="text-2xl font-bold mb-6">📊 PERFORMANCE (Letzte 10 Tage)</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-white bg-opacity-20 rounded-lg p-4">
+          <p class="text-sm text-green-100">Predictions</p>
+          <p class="text-3xl font-bold" id="perf-predictions">-</p>
+        </div>
+        <div class="bg-white bg-opacity-20 rounded-lg p-4">
+          <p class="text-sm text-green-100">Genauigkeit</p>
+          <p class="text-3xl font-bold" id="perf-accuracy">-</p>
+        </div>
+        <div class="bg-white bg-opacity-20 rounded-lg p-4">
+          <p class="text-sm text-green-100">Gewinn/Verlust</p>
+          <p class="text-3xl font-bold" id="perf-profit">-</p>
+        </div>
+        <div class="bg-white bg-opacity-20 rounded-lg p-4">
+          <p class="text-sm text-green-100">Korrekt</p>
+          <p class="text-3xl font-bold" id="perf-correct">-</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- FILTER BUTTONS -->
   <div class="max-w-7xl mx-auto px-4 py-6">
@@ -87,6 +111,26 @@
       }));
     }
 
+    // Load Performance Stats
+    async function loadPerformance() {
+      try {
+        const response = await fetch('/api/performance/last-10-days');
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const perf = data.data;
+          document.getElementById('perf-predictions').textContent = perf.total_predictions || '-';
+          document.getElementById('perf-accuracy').textContent = perf.accuracy_percent ? 
+            (parseFloat(perf.accuracy_percent).toFixed(1) + '%') : '-';
+          document.getElementById('perf-profit').textContent = perf.total_profit_loss !== null ? 
+            (perf.total_profit_loss >= 0 ? '+' : '') + perf.total_profit_loss : '-';
+          document.getElementById('perf-correct').textContent = perf.correct_predictions || '-';
+        }
+      } catch (error) {
+        console.error('Performance load error:', error);
+      }
+    }
+
     // Fetch Predictions
     async function loadPredictions() {
       try {
@@ -111,7 +155,6 @@
     function filterMatches(league) {
       currentFilter = league;
       
-      // Update button styles
       document.querySelectorAll('button').forEach(btn => {
         btn.classList.remove('bg-blue-600', 'text-white');
         btn.classList.add('bg-gray-200', 'text-gray-800');
@@ -199,27 +242,4 @@
             <p class="text-xs font-semibold text-gray-600 mb-3">📊 ÜBER/UNTER 2.5 TORE</p>
             <div class="grid grid-cols-2 gap-3">
               <div class="bg-green-50 rounded p-3 text-center">
-                <p class="text-xs text-gray-600">OVER</p>
-                <p class="text-lg font-bold text-green-600">${match.over_under_2_5.overProb}%</p>
-              </div>
-              <div class="bg-red-50 rounded p-3 text-center">
-                <p class="text-xs text-gray-600">UNDER</p>
-                <p class="text-lg font-bold text-red-600">${match.over_under_2_5.underProb}%</p>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 mt-2 text-center">
-              Erw. Tore: ${match.over_under_2_5.expectedTotalGoals}
-            </p>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', loadPredictions);
-    
-    // Auto-refresh every 5 minutes
-    setInterval(loadPredictions, 5 * 60 * 1000);
-  </script>
-</body>
-</html>
+                <p
