@@ -219,6 +219,23 @@ app.get('/api/admin/job-status', async (req, res) => {
   }
 });
 
+// Check database state
+app.get('/api/admin/check-db', async (req, res) => {
+  try {
+    const pred = await pool.query('SELECT COUNT(*) as count FROM predictions');
+    const matches = await pool.query('SELECT COUNT(*) as count FROM matches WHERE status = \'FINISHED\'');
+    const perfLog = await pool.query('SELECT COUNT(*) as count FROM performance_log');
+    
+    res.json({
+      predictions: pred.rows[0].count,
+      finished_matches: matches.rows[0].count,
+      performance_log_entries: perfLog.rows[0].count
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Clear all predictions
 app.get('/api/admin/clear-predictions', async (req, res) => {
   try {
