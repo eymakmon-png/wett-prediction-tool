@@ -602,6 +602,9 @@ app.get('/api/predictions/all', async (req, res) => {
     for (const match of matchesRes.rows) {
       const pred = await calculateAllPredictions(match.home_team_id, match.away_team_id, match.id);
       if (pred && pred.predictions) {
+        // SAVE prediction to database
+        await savePredictions(match.id, match.home_team_id, match.away_team_id, pred);
+        
         predictions.push({
           match_id: match.match_id,
           home_team: match.home_team,
