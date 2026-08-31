@@ -43,7 +43,7 @@ async function recordAllFinishedMatches() {
         pred.away_win_prob,
         pred.over_2_5_prob
        FROM matches m
-       JOIN predictions pred ON m.id = pred.match_id
+       JOIN predictions pred ON m.match_id = pred.match_id
        LEFT JOIN performance_log pl ON pred.id = pl.prediction_id
        WHERE m.status = 'FINISHED'
        AND pl.id IS NULL
