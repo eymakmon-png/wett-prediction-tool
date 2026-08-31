@@ -9,11 +9,10 @@
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .prediction-card { transition: all 0.3s ease; }
     .prediction-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .win-prob { background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); }
-    .over-prob { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
+
   <!-- HEADER -->
   <header class="bg-white shadow-lg">
     <div class="max-w-7xl mx-auto px-4 py-6">
@@ -94,7 +93,6 @@
     let allMatches = [];
     let currentFilter = 'ALL';
 
-    // Transform API response to match dashboard structure
     function transformPredictions(predictions) {
       return predictions.map(p => ({
         ...p,
@@ -105,13 +103,11 @@
         },
         over_under_2_5: {
           overProb: (p.over_2_5_prob * 100).toFixed(1),
-          underProb: (p.under_2_5_prob * 100).toFixed(1),
-          expectedTotalGoals: ((p.over_2_5_prob + p.under_2_5_prob) / 2 * 3).toFixed(1)
+          underProb: (p.under_2_5_prob * 100).toFixed(1)
         }
       }));
     }
 
-    // Load Performance Stats
     async function loadPerformance() {
       try {
         const response = await fetch('/api/performance/last-10-days');
@@ -131,7 +127,6 @@
       }
     }
 
-    // Fetch Predictions
     async function loadPredictions() {
       try {
         const response = await fetch('/api/predictions/all');
@@ -151,21 +146,17 @@
       }
     }
 
-    // Filter Matches
     function filterMatches(league) {
       currentFilter = league;
-      
       document.querySelectorAll('button').forEach(btn => {
         btn.classList.remove('bg-blue-600', 'text-white');
         btn.classList.add('bg-gray-200', 'text-gray-800');
       });
       event.target.classList.add('bg-blue-600', 'text-white');
       event.target.classList.remove('bg-gray-200', 'text-gray-800');
-      
       renderMatches();
     }
 
-    // Render Matches
     function renderMatches() {
       const container = document.getElementById('matches-container');
       const filtered = currentFilter === 'ALL' 
@@ -173,41 +164,29 @@
         : allMatches.filter(m => m.competition === currentFilter);
       
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">Keine Spiele für diese Liga</p></div>';
+        container.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">Keine Spiele</p></div>';
         return;
       }
 
       container.innerHTML = filtered.map(match => `
-        <div class="prediction-card bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-blue-500 hover:shadow-xl">
-          
-          <!-- MATCH HEADER -->
+        <div class="prediction-card bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-blue-500">
           <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
             <div class="flex justify-between items-start mb-2">
               <span class="text-xs font-semibold bg-blue-700 px-2 py-1 rounded">${match.competition}</span>
               <span class="text-xs text-blue-100">${new Date(match.kick_off).toLocaleDateString('de-DE')}</span>
             </div>
-            <p class="text-xs text-blue-100">
-              ${new Date(match.kick_off).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} Uhr
-            </p>
+            <p class="text-xs text-blue-100">${new Date(match.kick_off).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} Uhr</p>
           </div>
-
-          <!-- MATCH TEAMS -->
           <div class="p-4 border-b border-gray-200">
-            <div class="text-center">
-              <p class="text-lg font-bold text-gray-800 mb-2">${match.home_team}</p>
-              <p class="text-sm text-gray-600 mb-2">vs</p>
-              <p class="text-lg font-bold text-gray-800">${match.away_team}</p>
-            </div>
+            <p class="text-lg font-bold text-gray-800 mb-2">${match.home_team}</p>
+            <p class="text-sm text-gray-600 mb-2">vs</p>
+            <p class="text-lg font-bold text-gray-800">${match.away_team}</p>
           </div>
-
-          <!-- STATUS -->
           <div class="px-4 pt-2">
             <span class="text-xs font-semibold ${match.status === 'FINISHED' ? 'text-red-600' : 'text-green-600'}">
               ${match.status === 'FINISHED' ? '✓ BEENDET' : '⏳ ANSTEHEND'}
             </span>
           </div>
-
-          <!-- WIN PROBABILITY -->
           <div class="p-4 border-b border-gray-200">
             <p class="text-xs font-semibold text-gray-600 mb-3">🎯 GEWINNCHANCE</p>
             <div class="space-y-2">
@@ -218,7 +197,6 @@
               <div class="w-full bg-gray-200 rounded-full h-2">
                 <div class="bg-blue-500 h-2 rounded-full" style="width: ${match.win_probability.homeWinProb}%"></div>
               </div>
-              
               <div class="flex justify-between items-center mt-3">
                 <span class="text-sm font-semibold text-gray-700">UNENTSCHIEDEN</span>
                 <span class="text-sm font-bold text-gray-600">${match.win_probability.drawProb}%</span>
@@ -226,7 +204,6 @@
               <div class="w-full bg-gray-200 rounded-full h-2">
                 <div class="bg-gray-400 h-2 rounded-full" style="width: ${match.win_probability.drawProb}%"></div>
               </div>
-              
               <div class="flex justify-between items-center mt-3">
                 <span class="text-sm font-semibold text-gray-700">${match.away_team}</span>
                 <span class="text-sm font-bold text-red-600">${match.win_probability.awayWinProb}%</span>
@@ -236,10 +213,33 @@
               </div>
             </div>
           </div>
-
-          <!-- OVER/UNDER -->
           <div class="p-4">
-            <p class="text-xs font-semibold text-gray-600 mb-3">📊 ÜBER/UNTER 2.5 TORE</p>
+            <p class="text-xs font-semibold text-gray-600 mb-3">📊 ÜBER/UNTER 2.5</p>
             <div class="grid grid-cols-2 gap-3">
               <div class="bg-green-50 rounded p-3 text-center">
-                <p
+                <p class="text-xs text-gray-600">OVER</p>
+                <p class="text-lg font-bold text-green-600">${match.over_under_2_5.overProb}%</p>
+              </div>
+              <div class="bg-red-50 rounded p-3 text-center">
+                <p class="text-xs text-gray-600">UNDER</p>
+                <p class="text-lg font-bold text-red-600">${match.over_under_2_5.underProb}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPerformance();
+      loadPredictions();
+    });
+
+    setInterval(() => {
+      loadPerformance();
+      loadPredictions();
+    }, 5 * 60 * 1000);
+  </script>
+
+</body>
+</html>
