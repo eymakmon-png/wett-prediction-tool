@@ -256,7 +256,7 @@ app.get('/api/admin/clear-predictions', async (req, res) => {
 app.get('/api/admin/save-all-predictions', async (req, res) => {
   try {
     console.log('💾 Saving all predictions...');
-    const matchesRes = await pool.query(
+        const matchesRes = await pool.query(
       `SELECT 
         m.id,
         m.match_id,
@@ -267,6 +267,7 @@ app.get('/api/admin/save-all-predictions', async (req, res) => {
        FROM matches m
        JOIN teams ht ON m.home_team_id = ht.id
        JOIN teams at ON m.away_team_id = at.id
+       WHERE m.status = 'FINISHED'
        ORDER BY m.kick_off DESC
        LIMIT 200`
     );
