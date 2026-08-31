@@ -266,7 +266,7 @@ app.get('/api/admin/save-all-predictions', async (req, res) => {
       console.log(`Match ${match.match_id}: pred exists = ${!!pred}, pred.predictions exists = ${!!pred?.predictions}`);
       
       if (pred && pred.predictions) {
-         const result = await savePredictions(match.match_id, match.home_team_id, match.away_team_id, pred);
+        const result = await savePredictions(match.id, match.home_team_id, match.away_team_id, pred);
         if (result) {
           savedCount++;
         } else {
