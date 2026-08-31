@@ -1,5 +1,5 @@
 // ============================================
-// PERFORMANCE RECORDER
+// PERFORMANCE RECORDER - DEBUG
 // Lädt FINISHED Matches & speichert Performance
 // ============================================
 const { pool } = require('../database/init');
@@ -10,6 +10,14 @@ async function recordAllFinishedMatches() {
     console.log('\n╔════════════════════════════════════════╗');
     console.log('║  📊 PERFORMANCE RECORDER START        ║');
     console.log('╚════════════════════════════════════════╝');
+    
+    // Check predictions table
+    const predCheck = await pool.query('SELECT COUNT(*) as count FROM predictions');
+    console.log(`\n📊 Predictions in DB: ${predCheck.rows[0].count}`);
+    
+    // Check finished matches
+    const finishedCheck = await pool.query('SELECT COUNT(*) as count FROM matches WHERE status = \'FINISHED\'');
+    console.log(`📊 Finished matches in DB: ${finishedCheck.rows[0].count}`);
     
     // Get all FINISHED matches with predictions but WITHOUT performance_log entry
     const matchesRes = await pool.query(
@@ -29,18 +37,24 @@ async function recordAllFinishedMatches() {
        LEFT JOIN performance_log pl ON pred.id = pl.prediction_id
        WHERE m.status = 'FINISHED'
        AND pl.id IS NULL
-       ORDER BY m.kick_off DESC
        LIMIT 50`
     );
     
     const matches = matchesRes.rows;
-    console.log(`\n📊 Found ${matches.length} finished matches to record\n`);
+    console.log(`📊 Matches to record: ${matches.length}\n`);
+    
+    if (matches.length === 0) {
+      console.log('⚠ No matches found to record!');
+      return false;
+    }
     
     let recordedCount = 0;
     let errorCount = 0;
     
     for (const match of matches) {
       try {
+        console.log(`  🔄 Recording match ${match.match_id}...`);
+        
         // Determine predicted winner (highest probability)
         const probs = {
           HOME: match.home_win_prob,
@@ -65,6 +79,7 @@ async function recordAllFinishedMatches() {
         );
         
         recordedCount++;
+        console.log(`    ✓ Recorded!`);
       } catch (err) {
         console.error(`   ✗ Error for match ${match.match_id}:`, err.message);
         errorCount++;
