@@ -19,6 +19,16 @@ async function recordAllFinishedMatches() {
     const finishedCheck = await pool.query('SELECT COUNT(*) as count FROM matches WHERE status = \'FINISHED\'');
     console.log(`📊 Finished matches in DB: ${finishedCheck.rows[0].count}`);
     
+    // Debug: Show sample of predictions and finished matches
+    const predSample = await pool.query('SELECT id, match_id FROM predictions LIMIT 3');
+    const finishedSample = await pool.query('SELECT id FROM matches WHERE status = \'FINISHED\' LIMIT 3');
+    
+    console.log('\n🔍 Sample predictions:');
+    predSample.rows.forEach(p => console.log(`  - pred.id=${p.id}, pred.match_id=${p.match_id}`));
+    
+    console.log('🔍 Sample finished matches:');
+    finishedSample.rows.forEach(m => console.log(`  - match.id=${m.id}`));
+    
     // Get all FINISHED matches with predictions but WITHOUT performance_log entry
     const matchesRes = await pool.query(
       `SELECT 
