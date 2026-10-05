@@ -5,6 +5,7 @@ const { initDatabase, pool } = require('./database/init');
 const { fullSync } = require('./api/footballdata');
 const axios = require('axios');
 const { calculateAllPredictions } = require('./engine/predictions');
+const { scrapeAllH2HMatches } = require('./services/h2hScraper');
 const path = require('path');
 require('./services/jobScheduler');
 const app = express();
