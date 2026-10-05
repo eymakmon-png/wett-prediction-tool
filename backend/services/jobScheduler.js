@@ -8,6 +8,7 @@ const { scrapeAllInjuries } = require('./transfermarktScraper');
 const { scrapeAllPlayerForms } = require('./flashscoreScraper');
 const { scrapeAllPlayerPerformances } = require('./sofascoreScraper');
 const { recordAllFinishedMatches } = require('./performanceRecorder');
+const { scrapeAllH2HMatches } = require('./h2hScraper');
 const { logJobStart, logJobSuccess, logJobError } = require('./jobLogger');
 
 console.log('⏰ Initializing Job Scheduler...');
@@ -140,6 +141,33 @@ cron.schedule('0 9 * * *', async () => {
 cron.schedule('0 10 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
+
+  // Job 7: H2H Scraper at 10:30 UTC
+cron.schedule('30 10 * * *', async () => {
+  const startTime = Date.now();
+  let jobId = null;
+  
+  try {
+    jobId = await logJobStart('H2H-Scraper');
+    
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log('║  🔄 H2H SCRAPER (10:30 UTC)           ║');
+    console.log('╚════════════════════════════════════════╝');
+    
+    const result = await scrapeAllH2HMatches();
+    const duration = Date.now() - startTime;
+    
+    if (result) {
+      await logJobSuccess(jobId, 'H2H-Scraper', duration);
+    } else {
+      await logJobError(jobId, 'H2H-Scraper', 'Scraper returned false', duration);
+    }
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error('✗ H2H Scraper error:', error.message);
+    await logJobError(jobId, 'H2H-Scraper', error.message, duration);
+  }
+});
   
   try {
     jobId = await logJobStart('Performance-Recorder');
@@ -165,6 +193,7 @@ console.log('  🏥 07:00 UTC - Transfermarkt Scraper');
 console.log('  ⭐ 08:00 UTC - Player Form Scraper');
 console.log('  🎯 09:00 UTC - Sofascore Performance');
 console.log('  📊 10:00 UTC - Performance Recorder');
+console.log('  🔄 10:30 UTC - H2H Scraper');
 console.log('  📈 18:00 UTC - Auto Predictions\n');
 
 module.exports = {
