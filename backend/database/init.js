@@ -150,36 +150,24 @@ CREATE INDEX IF NOT EXISTS idx_player_performance_match ON player_performance(ma
 CREATE INDEX IF NOT EXISTS idx_player_performance_player ON player_performance(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_performance_team ON player_performance(team_id);
 
--- 8. PERFORMANCE LOG TABELLE
-CREATE TABLE IF NOT EXISTS performance_log (
-  id SERIAL PRIMARY KEY,
-  prediction_id INTEGER REFERENCES predictions(id),
-  match_result VARCHAR(20),
-  actual_home_goals INTEGER,
-  actual_away_goals INTEGER,
-  prediction_correct BOOLEAN,
-  profit_loss FLOAT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
-);
 CREATE INDEX IF NOT EXISTS idx_performance_log_prediction ON performance_log(prediction_id);
 CREATE INDEX IF NOT EXISTS idx_performance_log_created ON performance_log(created_at);
-// H2H History Table
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS h2h_history (
-    id SERIAL PRIMARY KEY,
-    home_team_id INTEGER NOT NULL,
-    away_team_id INTEGER NOT NULL,
-    home_wins INTEGER DEFAULT 0,
-    draws INTEGER DEFAULT 0,
-    away_wins INTEGER DEFAULT 0,
-    home_win_rate DECIMAL(5,2),
-    last_updated TIMESTAMP DEFAULT NOW(),
-    UNIQUE(home_team_id, away_team_id),
-    FOREIGN KEY (home_team_id) REFERENCES teams(id),
-    FOREIGN KEY (away_team_id) REFERENCES teams(id)
-  )
-`);
-console.log('✓ h2h_history table created!');
+
+-- 9. H2H HISTORY TABELLE
+CREATE TABLE IF NOT EXISTS h2h_history (
+  id SERIAL PRIMARY KEY,
+  home_team_id INTEGER NOT NULL,
+  away_team_id INTEGER NOT NULL,
+  home_wins INTEGER DEFAULT 0,
+  draws INTEGER DEFAULT 0,
+  away_wins INTEGER DEFAULT 0,
+  home_win_rate DECIMAL(5,2),
+  last_updated TIMESTAMP DEFAULT NOW(),
+  UNIQUE(home_team_id, away_team_id),
+  FOREIGN KEY (home_team_id) REFERENCES teams(id),
+  FOREIGN KEY (away_team_id) REFERENCES teams(id)
+);
+CREATE INDEX IF NOT EXISTS idx_h2h_history_teams ON h2h_history(home_team_id, away_team_id);
 
   -- INDEXES für schnelle Abfragen
   CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
