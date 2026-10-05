@@ -163,6 +163,24 @@ CREATE TABLE IF NOT EXISTS performance_log (
 );
 CREATE INDEX IF NOT EXISTS idx_performance_log_prediction ON performance_log(prediction_id);
 CREATE INDEX IF NOT EXISTS idx_performance_log_created ON performance_log(created_at);
+// H2H History Table
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS h2h_history (
+    id SERIAL PRIMARY KEY,
+    home_team_id INTEGER NOT NULL,
+    away_team_id INTEGER NOT NULL,
+    home_wins INTEGER DEFAULT 0,
+    draws INTEGER DEFAULT 0,
+    away_wins INTEGER DEFAULT 0,
+    home_win_rate DECIMAL(5,2),
+    last_updated TIMESTAMP DEFAULT NOW(),
+    UNIQUE(home_team_id, away_team_id),
+    FOREIGN KEY (home_team_id) REFERENCES teams(id),
+    FOREIGN KEY (away_team_id) REFERENCES teams(id)
+  )
+`);
+console.log('✓ h2h_history table created!');
+
   -- INDEXES für schnelle Abfragen
   CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
   CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
