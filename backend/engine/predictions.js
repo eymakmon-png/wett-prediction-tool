@@ -1,6 +1,6 @@
 // ============================================
-// PREDICTION ENGINE - IMPROVED v3
-// Mit Player Performance Integration
+// PREDICTION ENGINE - IMPROVED v4
+// Mit H2H History Integration (Conservative)
 // ============================================
 const { pool } = require('../database/init');
 
@@ -46,21 +46,41 @@ async function calculateTeamForm(teamId) {
   }
 }
 
-// Calculate head-to-head record
+// Calculate head-to-head record FROM h2h_history TABLE
 async function calculateHeadToHead(homeTeamId, awayTeamId) {
   try {
-    const result = await pool.query(
+    // Try h2h_history first (NEW!)
+    const h2hResult = await pool.query(
+      `SELECT home_wins, draws, away_wins
+       FROM h2h_history
+       WHERE home_team_id = $1 AND away_team_id = $2`,
+      [homeTeamId, awayTeamId]
+    );
+    
+    if (h2hResult.rows.length > 0) {
+      const data = h2hResult.rows[0];
+      return {
+        homeWins: data.home_wins,
+        draws: data.draws,
+        awayWins: data.away_wins,
+        matchesPlayed: data.home_wins + data.draws + data.away_wins,
+        source: 'h2h_history'
+      };
+    }
+    
+    // Fallback: Calculate from matches table if h2h_history empty
+    const matchResult = await pool.query(
       `SELECT m.home_team_id, m.home_goals, m.away_goals
        FROM matches m
        WHERE ((m.home_team_id = $1 AND m.away_team_id = $2)
           OR (m.home_team_id = $2 AND m.away_team_id = $1))
        AND m.status = 'FINISHED'
        ORDER BY m.kick_off DESC
-       LIMIT 5`,
+       LIMIT 10`,
       [homeTeamId, awayTeamId]
     );
     
-    const matches = result.rows;
+    const matches = matchResult.rows;
     let homeWins = 0, draws = 0, awayWins = 0;
     
     for (const match of matches) {
@@ -77,15 +97,16 @@ async function calculateHeadToHead(homeTeamId, awayTeamId) {
       homeWins,
       draws,
       awayWins,
-      matchesPlayed: matches.length
+      matchesPlayed: matches.length,
+      source: 'matches_fallback'
     };
   } catch (error) {
     console.error('Error calculating head-to-head:', error.message);
-    return { homeWins: 0, draws: 0, awayWins: 0, matchesPlayed: 0 };
+    return { homeWins: 0, draws: 0, awayWins: 0, matchesPlayed: 0, source: 'error' };
   }
 }
 
-// NEW: Calculate player strength from recent performances
+// Calculate player strength from recent performances
 async function calculatePlayerStrength(teamId) {
   try {
     const result = await pool.query(
@@ -95,7 +116,7 @@ async function calculatePlayerStrength(teamId) {
        AND pp.rating > 0`,
       [teamId]
     );
-    
+
     const data = result.rows[0];
     
     if (!data || data.perf_count === 0) {
@@ -103,7 +124,7 @@ async function calculatePlayerStrength(teamId) {
     }
     
     const avgRating = parseFloat(data.avg_rating) || 6.0;
-    const playerStrength = (avgRating - 5) / 5; // Normalized to -1 to 1
+    const playerStrength = (avgRating - 5) / 5;
     
     return {
       avgRating: parseFloat(avgRating.toFixed(2)),
@@ -141,17 +162,15 @@ function calculateOverUnder2_5(homeTeamId, awayTeamId, form1, form2) {
   };
 }
 
-// IMPROVED: Win probability with ALL factors
+// IMPROVED v4: Win probability with H2H from h2h_history
 async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
   try {
-    // Get all data
     const homeFormRes = await calculateTeamForm(homeTeamId);
     const awayFormRes = await calculateTeamForm(awayTeamId);
     const h2hRes = await calculateHeadToHead(homeTeamId, awayTeamId);
     const homePlayerRes = await calculatePlayerStrength(homeTeamId);
     const awayPlayerRes = await calculatePlayerStrength(awayTeamId);
     
-    // Get ELO from database
     const eloRes = await pool.query(
       `SELECT elo_rating FROM teams WHERE id = $1 OR id = $2`,
       [homeTeamId, awayTeamId]
@@ -160,33 +179,32 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
     const homeElo = eloRes.rows[0]?.elo_rating || 1500;
     const awayElo = eloRes.rows[1]?.elo_rating || 1500;
     
-    // Calculate base probabilities
     const eloProbs = calculateWinProbability(homeElo, awayElo);
     
-    // Form factor (30% → 25%)
+    // Form factor (25%)
     const formFactor = (homeFormRes.formRating - awayFormRes.formRating) / 10;
     
-    // H2H factor (20% → 15%)
+    // H2H factor (CONSERVATIVE: 12%)
     const h2hFactor = h2hRes.matchesPlayed > 0 
       ? (h2hRes.homeWins - h2hRes.awayWins) / (h2hRes.matchesPlayed * 2)
       : 0;
     
-    // Player Performance factor (NEW: 15%)
+    // Player Performance factor (18%)
     const playerFactor = (homePlayerRes.playerStrength - awayPlayerRes.playerStrength) / 2;
     
     // Home advantage (10%)
     const homeAdvantage = 0.05;
-    
-    // WEIGHTS (SUM = 100%):
-    // ELO: 35%, Form: 25%, H2H: 15%, Home: 10%, Player: 15%
+
+    // WEIGHTS (Sum = 100%):
+    // ELO: 35%, Form: 25%, H2H: 12%, Home: 10%, Player: 18%
     const homeWinProb = Math.min(
       0.95,
       Math.max(
         0.05,
         eloProbs.homeWin * 0.35 +
         (0.5 + formFactor * 0.25) * 0.25 +
-        (0.5 + h2hFactor * 0.15) * 0.15 +
-        (0.5 + playerFactor * 0.15) * 0.15 +
+        (0.5 + h2hFactor * 0.12) * 0.12 +
+        (0.5 + playerFactor * 0.18) * 0.18 +
         homeAdvantage * 0.10
       )
     );
@@ -197,8 +215,8 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
         0.05,
         eloProbs.awayWin * 0.35 +
         (0.5 - formFactor * 0.25) * 0.25 +
-        (0.5 - h2hFactor * 0.15) * 0.15 +
-        (0.5 - playerFactor * 0.15) * 0.15
+        (0.5 - h2hFactor * 0.12) * 0.12 +
+        (0.5 - playerFactor * 0.18) * 0.18
       )
     );
     
@@ -211,10 +229,11 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
       factors: {
         eloWeight: 0.35,
         formWeight: 0.25,
-        h2hWeight: 0.15,
+        h2hWeight: 0.12,
         homeWeight: 0.10,
-        playerWeight: 0.15
-      }
+        playerWeight: 0.18
+      },
+      h2hSource: h2hRes.source
     };
   } catch (error) {
     console.error('Error calculating improved win probability:', error.message);
@@ -256,7 +275,8 @@ async function calculateAllPredictions(homeTeamId, awayTeamId, matchId) {
         winProbs.awayWinProb,
         ou.over2_5
       ),
-      factors: winProbs.factors
+      factors: winProbs.factors,
+      h2hSource: winProbs.h2hSource
     };
   } catch (error) {
     console.error('Error calculating all predictions:', error.message);
