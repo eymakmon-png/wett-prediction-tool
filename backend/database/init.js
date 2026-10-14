@@ -1,19 +1,16 @@
 // backend/database/init.js
 // ============================================
 // DATABASE INITIALIZATION
-// Läuft automatisch beim Server-Start!
 // ============================================
 
 const { Pool } = require('pg');
 
-// Verbindung zur Datenbank
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// SQL Schema
 const schema = `
-  -- 1. TEAMS TABELLE
+  -- 1. TEAMS
   CREATE TABLE IF NOT EXISTS teams (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
@@ -29,7 +26,7 @@ const schema = `
     updated_at TIMESTAMP DEFAULT NOW()
   );
 
-  -- 2. PLAYERS TABELLE
+  -- 2. PLAYERS
   CREATE TABLE IF NOT EXISTS players (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -44,7 +41,7 @@ const schema = `
     updated_at TIMESTAMP DEFAULT NOW()
   );
 
-  -- 3. MATCHES TABELLE
+  -- 3. MATCHES
   CREATE TABLE IF NOT EXISTS matches (
     id SERIAL PRIMARY KEY,
     match_id VARCHAR(50) UNIQUE,
@@ -62,7 +59,7 @@ const schema = `
     updated_at TIMESTAMP DEFAULT NOW()
   );
 
-  -- 4. PREDICTIONS TABELLE
+  -- 4. PREDICTIONS
   CREATE TABLE IF NOT EXISTS predictions (
     id SERIAL PRIMARY KEY,
     match_id INTEGER REFERENCES matches(id),
@@ -80,7 +77,7 @@ const schema = `
     updated_at TIMESTAMP DEFAULT NOW()
   );
 
-  -- 5. PLAYER RATINGS TABELLE
+  -- 5. PLAYER RATINGS
   CREATE TABLE IF NOT EXISTS player_ratings (
     id SERIAL PRIMARY KEY,
     player_id INTEGER REFERENCES players(id),
@@ -92,7 +89,7 @@ const schema = `
     created_at TIMESTAMP DEFAULT NOW()
   );
 
-  -- 6. MANUAL INPUTS TABELLE
+  -- 6. MANUAL INPUTS
   CREATE TABLE IF NOT EXISTS manual_inputs (
     id SERIAL PRIMARY KEY,
     match_id INTEGER REFERENCES matches(id),
@@ -103,7 +100,7 @@ const schema = `
     created_at TIMESTAMP DEFAULT NOW()
   );
   
-  -- 7a. INJURIES TABELLE
+  -- 7a. INJURIES
   CREATE TABLE IF NOT EXISTS injuries (
     id SERIAL PRIMARY KEY,
     team_id INTEGER REFERENCES teams(id),
@@ -117,59 +114,84 @@ const schema = `
     UNIQUE(team_id, player_name)
   );
   
- -- 7b. JOB LOGS TABELLE
-CREATE TABLE IF NOT EXISTS job_logs (
-  id SERIAL PRIMARY KEY,
-  job_name VARCHAR(100) NOT NULL,
-  status VARCHAR(20) DEFAULT 'RUNNING',
-  started_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  duration_ms INTEGER,
-  error_message TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_job_logs_job_name ON job_logs(job_name);
-CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at);
+  -- 7b. JOB LOGS
+  CREATE TABLE IF NOT EXISTS job_logs (
+    id SERIAL PRIMARY KEY,
+    job_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) DEFAULT 'RUNNING',
+    started_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    duration_ms INTEGER,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_job_logs_job_name ON job_logs(job_name);
+  CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at);
 
--- 7c. PLAYER PERFORMANCE TABELLE
-CREATE TABLE IF NOT EXISTS player_performance (
-  id SERIAL PRIMARY KEY,
-  match_id INTEGER REFERENCES matches(id),
-  player_id INTEGER REFERENCES players(id),
-  player_name VARCHAR(255) NOT NULL,
-  team_id INTEGER REFERENCES teams(id),
-  rating FLOAT DEFAULT 0,
-  goals INTEGER DEFAULT 0,
-  assists INTEGER DEFAULT 0,
-  source VARCHAR(50) DEFAULT 'sofascore',
-  scraped_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(match_id, player_id, source)
-);
-CREATE INDEX IF NOT EXISTS idx_player_performance_match ON player_performance(match_id);
-CREATE INDEX IF NOT EXISTS idx_player_performance_player ON player_performance(player_id);
-CREATE INDEX IF NOT EXISTS idx_player_performance_team ON player_performance(team_id);
+  -- 7c. PLAYER PERFORMANCE
+  CREATE TABLE IF NOT EXISTS player_performance (
+    id SERIAL PRIMARY KEY,
+    match_id INTEGER REFERENCES matches(id),
+    player_id INTEGER REFERENCES players(id),
+    player_name VARCHAR(255) NOT NULL,
+    team_id INTEGER REFERENCES teams(id),
+    rating FLOAT DEFAULT 0,
+    goals INTEGER DEFAULT 0,
+    assists INTEGER DEFAULT 0,
+    source VARCHAR(50) DEFAULT 'sofascore',
+    scraped_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(match_id, player_id, source)
+  );
+  CREATE INDEX IF NOT EXISTS idx_player_performance_match ON player_performance(match_id);
+  CREATE INDEX IF NOT EXISTS idx_player_performance_player ON player_performance(player_id);
+  CREATE INDEX IF NOT EXISTS idx_player_performance_team ON player_performance(team_id);
 
-CREATE INDEX IF NOT EXISTS idx_performance_log_prediction ON performance_log(prediction_id);
-CREATE INDEX IF NOT EXISTS idx_performance_log_created ON performance_log(created_at);
+  -- 8. PERFORMANCE LOG (WAR HIER NICHT!)
+  CREATE TABLE IF NOT EXISTS performance_log (
+    id SERIAL PRIMARY KEY,
+    prediction_id INTEGER REFERENCES predictions(id) ON DELETE CASCADE,
+    match_id INTEGER REFERENCES matches(id),
+    prediction_value DECIMAL(5,2),
+    actual_result VARCHAR(10),
+    correct BOOLEAN,
+    profit DECIMAL(8,2),
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_performance_log_prediction ON performance_log(prediction_id);
+  CREATE INDEX IF NOT EXISTS idx_performance_log_created ON performance_log(created_at);
 
--- 9. H2H HISTORY TABELLE
-CREATE TABLE IF NOT EXISTS h2h_history (
-  id SERIAL PRIMARY KEY,
-  home_team_id INTEGER NOT NULL,
-  away_team_id INTEGER NOT NULL,
-  home_wins INTEGER DEFAULT 0,
-  draws INTEGER DEFAULT 0,
-  away_wins INTEGER DEFAULT 0,
-  home_win_rate DECIMAL(5,2),
-  last_updated TIMESTAMP DEFAULT NOW(),
-  UNIQUE(home_team_id, away_team_id),
-  FOREIGN KEY (home_team_id) REFERENCES teams(id),
-  FOREIGN KEY (away_team_id) REFERENCES teams(id)
-);
-CREATE INDEX IF NOT EXISTS idx_h2h_history_teams ON h2h_history(home_team_id, away_team_id);
+  -- 8a. PERFORMANCE LOG ARCHIVE (NEU!)
+  CREATE TABLE IF NOT EXISTS performance_log_archive (
+    id SERIAL PRIMARY KEY,
+    prediction_id INTEGER,
+    match_id INTEGER,
+    prediction_value DECIMAL(5,2),
+    actual_result VARCHAR(10),
+    correct BOOLEAN,
+    profit DECIMAL(8,2),
+    created_at TIMESTAMP DEFAULT NOW(),
+    archived_at TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_performance_log_archive_created ON performance_log_archive(created_at);
 
-  -- INDEXES für schnelle Abfragen
+  -- 9. H2H HISTORY
+  CREATE TABLE IF NOT EXISTS h2h_history (
+    id SERIAL PRIMARY KEY,
+    home_team_id INTEGER NOT NULL,
+    away_team_id INTEGER NOT NULL,
+    home_wins INTEGER DEFAULT 0,
+    draws INTEGER DEFAULT 0,
+    away_wins INTEGER DEFAULT 0,
+    home_win_rate DECIMAL(5,2),
+    last_updated TIMESTAMP DEFAULT NOW(),
+    UNIQUE(home_team_id, away_team_id),
+    FOREIGN KEY (home_team_id) REFERENCES teams(id),
+    FOREIGN KEY (away_team_id) REFERENCES teams(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_h2h_history_teams ON h2h_history(home_team_id, away_team_id);
+
+  -- ALLGEMEINE INDEXES
   CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
   CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
   CREATE INDEX IF NOT EXISTS idx_matches_home_team ON matches(home_team_id);
@@ -180,23 +202,16 @@ CREATE INDEX IF NOT EXISTS idx_h2h_history_teams ON h2h_history(home_team_id, aw
   CREATE INDEX IF NOT EXISTS idx_player_ratings_date ON player_ratings(rating_date);
 `;
 
-// Funktion: Datenbank initialisieren
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database schema...');
-    
-    // Führe alle SQL Statements aus
     await pool.query(schema);
-    
     console.log('✓ Database schema initialized successfully!');
-    console.log('✓ All tables created!');
-    console.log('✓ Indexes created!');
-    
     return true;
   } catch (error) {
     console.error('✗ Database initialization error:', error.message);
     return false;
   }
 }
-// Export
+
 module.exports = { initDatabase, pool };
