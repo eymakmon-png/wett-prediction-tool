@@ -202,9 +202,9 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
       Math.max(
         0.05,
         eloProbs.homeWin * 0.35 +
-        (0.5 + formFactor * 0.25) * 0.25 +
-        (0.5 + h2hFactor * 0.12) * 0.12 +
-        (0.5 + playerFactor * 0.18) * 0.18 +
+         (0.5 + formFactor * 0.25) * 0.25 +
+         (0.5 + h2hFactor * 0.00) * 0.00 +
+         (0.5 + playerFactor * 0.30) * 0.30 +
         homeAdvantage * 0.10
       )
     );
@@ -213,10 +213,10 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
       0.95,
       Math.max(
         0.05,
-        eloProbs.awayWin * 0.35 +
+       eloProbs.awayWin * 0.35 +
         (0.5 - formFactor * 0.25) * 0.25 +
-        (0.5 - h2hFactor * 0.12) * 0.12 +
-        (0.5 - playerFactor * 0.18) * 0.18
+        (0.5 - h2hFactor * 0.00) * 0.00 +
+        (0.5 - playerFactor * 0.30) * 0.30
       )
     );
     
@@ -227,11 +227,12 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId) {
       drawProb: parseFloat(drawProb.toFixed(4)),
       awayWinProb: parseFloat(awayWinProb.toFixed(4)),
       factors: {
-        eloWeight: 0.35,
-        formWeight: 0.25,
-        h2hWeight: 0.12,
-        homeWeight: 0.10,
-        playerWeight: 0.18
+       eloWeight: 0.35,
+       formWeight: 0.25,
+       h2hWeight: 0.00,
+       homeWeight: 0.10,
+       playerWeight: 0.30
+}
       },
       h2hSource: h2hRes.source
     };
