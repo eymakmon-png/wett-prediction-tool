@@ -242,8 +242,8 @@ app.get('/api/admin/archive-performance', async (req, res) => {
   try {
     // 1. Copy old data to archive
     await pool.query(`
-      INSERT INTO performance_log_archive (prediction_id, match_id, prediction_value, actual_result, correct, profit, created_at)
-      SELECT prediction_id, match_id, prediction_value, actual_result, correct, profit, created_at
+      INSERT INTO performance_log_archive (prediction_id, prediction_value, actual_result, correct, profit, created_at)
+      SELECT prediction_id, prediction_value, actual_result, correct, profit, created_at
       FROM performance_log
     `);
     
