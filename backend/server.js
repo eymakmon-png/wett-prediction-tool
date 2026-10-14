@@ -237,6 +237,33 @@ app.get('/api/admin/check-db', async (req, res) => {
   }
 });
 
+// Archive old performance logs and clear
+app.get('/api/admin/archive-performance', async (req, res) => {
+  try {
+    // 1. Copy old data to archive
+    await pool.query(`
+      INSERT INTO performance_log_archive (prediction_id, match_id, prediction_value, actual_result, correct, profit, created_at)
+      SELECT prediction_id, match_id, prediction_value, actual_result, correct, profit, created_at
+      FROM performance_log
+    `);
+    
+    // 2. Clear performance_log
+    await pool.query('DELETE FROM performance_log');
+    
+    // 3. Count archived rows
+    const archiveCount = await pool.query('SELECT COUNT(*) as count FROM performance_log_archive');
+    
+    res.json({ 
+      success: true, 
+      message: 'Performance logs archived',
+      archived_rows: archiveCount.rows[0].count,
+      remaining_logs: 0
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Clear all predictions
 app.get('/api/admin/clear-predictions', async (req, res) => {
   try {
