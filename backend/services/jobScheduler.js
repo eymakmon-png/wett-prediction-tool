@@ -1,11 +1,10 @@
 // ============================================
 // JOB SCHEDULER - node-cron
-// Sofascore-Job deaktiviert (lieferte Zufallswerte)
+// Aktiv: Sync (06:00), Predictions (18:00), Recorder (10:00), H2H (10:30)
+// Deaktiviert: Transfermarkt, Player-Form, Sofascore (liefern keine echten Daten)
 // ============================================
 const cron = require('node-cron');
 const { fullSync } = require('../api/footballdata');
-const { scrapeAllInjuries } = require('./transfermarktScraper');
-const { scrapeAllPlayerForms } = require('./flashscoreScraper');
 const { recordAllFinishedMatches } = require('./performanceRecorder');
 const { scrapeAllH2HMatches } = require('./h2hScraper');
 const { logJobStart, logJobSuccess, logJobError } = require('./jobLogger');
@@ -41,37 +40,7 @@ cron.schedule('0 6 * * *', async () => {
   }
 });
 
-// Job 2: Transfermarkt Scraper at 07:00 UTC
-/*
-cron.schedule('0 7 * * *', async () => {
-  const startTime = Date.now();
-  let jobId = null;
-
-  try {
-    jobId = await logJobStart('Transfermarkt-Scraper');
-
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log('║  🏥 SCHEDULED SCRAPER (07:00 UTC)     ║');
-    console.log('╚════════════════════════════════════════╝');
-
-    const result = await scrapeAllInjuries();
-    const duration = Date.now() - startTime;
-
-    if (result) {
-      console.log('✓ Scraper completed successfully!\n');
-      await logJobSuccess(jobId, 'Transfermarkt-Scraper', duration);
-    } else {
-      console.log('⚠ Scraper completed with errors\n');
-      await logJobError(jobId, 'Transfermarkt-Scraper', 'Scraper returned false', duration);
-    }
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error('✗ Scraper error:', error.message);
-    await logJobError(jobId, 'Transfermarkt-Scraper', error.message, duration);
-  }
-});
-/*
-// Job 3: Prediction Calculation at 18:00 UTC
+// Job 2: Predictions at 18:00 UTC
 cron.schedule('0 18 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
@@ -84,7 +53,6 @@ cron.schedule('0 18 * * *', async () => {
     console.log('╚════════════════════════════════════════╝');
 
     console.log('✓ Predictions will be recalculated on next API call');
-    console.log('✓ All algorithms use latest data\n');
 
     const duration = Date.now() - startTime;
     await logJobSuccess(jobId, 'Auto-Predictions', duration);
@@ -95,33 +63,7 @@ cron.schedule('0 18 * * *', async () => {
   }
 });
 
-// Job 4: Player Form Scraper at 08:00 UTC
-/*
-cron.schedule('0 8 * * *', async () => {
-  const startTime = Date.now();
-  let jobId = null;
-
-  try {
-    jobId = await logJobStart('Player-Form-Scraper');
-
-    await scrapeAllPlayerForms();
-    const duration = Date.now() - startTime;
-
-    await logJobSuccess(jobId, 'Player-Form-Scraper', duration);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error('✗ Player Form Scraper error:', error.message);
-    await logJobError(jobId, 'Player-Form-Scraper', error.message, duration);
-  }
-});
-/*
-// Job 5: Sofascore Player Performance at 09:00 UTC
-// DEAKTIVIERT: liefert Zufallswerte statt echter Daten.
-// cron.schedule('0 9 * * *', async () => {
-//   ... (unveraendert, nur auskommentiert)
-// });
-
-// Job 6: Performance Recorder at 10:00 UTC
+// Job 3: Performance Recorder at 10:00 UTC
 cron.schedule('0 10 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
@@ -144,7 +86,7 @@ cron.schedule('0 10 * * *', async () => {
   }
 });
 
-// Job 7: H2H Scraper at 10:30 UTC
+// Job 4: H2H Scraper at 10:30 UTC
 cron.schedule('30 10 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
@@ -173,12 +115,8 @@ cron.schedule('30 10 * * *', async () => {
 
 console.log('✓ Job Scheduler initialized!');
 console.log('  📅 06:00 UTC - Auto Sync');
-console.log('  🏥 07:00 UTC - Transfermarkt Scraper');
-console.log('  ⭐ 08:00 UTC - Player Form Scraper');
 console.log('  📊 10:00 UTC - Performance Recorder');
 console.log('  🔄 10:30 UTC - H2H Scraper');
 console.log('  📈 18:00 UTC - Auto Predictions\n');
 
-module.exports = {
-  // Export für Tests falls nötig
-};
+module.exports = {};
