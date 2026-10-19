@@ -816,6 +816,17 @@ app.get('/api/admin/check-lineups-history', async (req, res) => {
   }
 });
 
+// Aufstellungen fuer beendete Spiele speichern (bis 20 pro Aufruf)
+app.get('/api/admin/sync-lineups', async (req, res) => {
+  try {
+    const { syncLineupsForFinishedMatches } = require('./services/lineupSync');
+    const result = await syncLineupsForFinishedMatches(20);
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
