@@ -95,6 +95,7 @@ cron.schedule('0 18 * * *', async () => {
 });
 
 // Job 4: Player Form Scraper at 08:00 UTC
+/*
 cron.schedule('0 8 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
@@ -112,7 +113,7 @@ cron.schedule('0 8 * * *', async () => {
     await logJobError(jobId, 'Player-Form-Scraper', error.message, duration);
   }
 });
-
+/*
 // Job 5: Sofascore Player Performance at 09:00 UTC
 // DEAKTIVIERT: liefert Zufallswerte statt echter Daten.
 // cron.schedule('0 9 * * *', async () => {
