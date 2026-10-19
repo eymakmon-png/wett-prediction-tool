@@ -42,6 +42,7 @@ cron.schedule('0 6 * * *', async () => {
 });
 
 // Job 2: Transfermarkt Scraper at 07:00 UTC
+/*
 cron.schedule('0 7 * * *', async () => {
   const startTime = Date.now();
   let jobId = null;
@@ -69,7 +70,7 @@ cron.schedule('0 7 * * *', async () => {
     await logJobError(jobId, 'Transfermarkt-Scraper', error.message, duration);
   }
 });
-
+/*
 // Job 3: Prediction Calculation at 18:00 UTC
 cron.schedule('0 18 * * *', async () => {
   const startTime = Date.now();
