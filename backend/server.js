@@ -776,6 +776,46 @@ app.get('/api/admin/check-lineups', async (req, res) => {
   }
 });
 
+// Read-only test: Aufstellungen fuer die letzten 10 beendeten Spiele pruefen
+app.get('/api/admin/check-lineups-history', async (req, res) => {
+  try {
+    const key = process.env.FOOTBALL_DATA_API_KEY;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const headers = { 'X-Auth-Token': key };
+
+    const list = await axios.get(
+      'https://api.football-data.org/v4/competitions/BL1/matches?status=FINISHED',
+      { headers, timeout: 20000 }
+    );
+    const matches = list.data.matches.slice(-10);
+
+    const ergebnisse = [];
+    for (const m of matches) {
+      await sleep(1200);
+      const detail = await axios.get(
+        `https://api.football-data.org/v4/matches/${m.id}`,
+        { headers: { ...headers, 'X-Unfold-Lineups': 'true' }, timeout: 20000 }
+      );
+      const x = detail.data;
+      ergebnisse.push({
+        spiel: `${m.homeTeam.name} vs ${m.awayTeam.name}`,
+        datum: m.utcDate,
+        aufstellung_heim: (x.homeTeam?.lineup || []).length,
+        aufstellung_auswaerts: (x.awayTeam?.lineup || []).length,
+        wechsel: (x.substitutions || []).length
+      });
+    }
+
+    const mitAufstellung = ergebnisse.filter(
+      e => e.aufstellung_heim > 0 && e.aufstellung_auswaerts > 0
+    ).length;
+
+    res.json({ geprueft: ergebnisse.length, mit_aufstellung: mitAufstellung, ergebnisse });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message, status: e.response?.status });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
