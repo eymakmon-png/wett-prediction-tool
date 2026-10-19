@@ -748,6 +748,34 @@ app.get('/api/predictions/all', async (req, res) => {
   }
 });
 
+// Read-only check: sind Aufstellungen bei football-data.org abrufbar?
+app.get('/api/admin/check-lineups', async (req, res) => {
+  try {
+    const key = process.env.FOOTBALL_DATA_API_KEY;
+    const list = await axios.get(
+      'https://api.football-data.org/v4/competitions/BL1/matches?status=FINISHED',
+      { headers: { 'X-Auth-Token': key }, timeout: 20000 }
+    );
+    const last = list.data.matches[list.data.matches.length - 1];
+    const detail = await axios.get(
+      `https://api.football-data.org/v4/matches/${last.id}`,
+      { headers: { 'X-Auth-Token': key, 'X-Unfold-Lineups': 'true' }, timeout: 20000 }
+    );
+    const x = detail.data;
+    res.json({
+      spiel: `${last.homeTeam.name} vs ${last.awayTeam.name}`,
+      datum: last.utcDate,
+      aufstellung_heim: (x.homeTeam?.lineup || []).length,
+      aufstellung_auswaerts: (x.awayTeam?.lineup || []).length,
+      tore: (x.goals || []).length,
+      karten: (x.bookings || []).length,
+      wechsel: (x.substitutions || []).length
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message, status: e.response?.status });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
