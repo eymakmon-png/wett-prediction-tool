@@ -199,7 +199,7 @@ async function syncFinishedMatches(leagueCode = 'BL1') {
       `${FOOTBALL_DATA_API}/competitions/${leagueCode}/matches?season=2026&status=FINISHED`,
       {
         headers: { 'X-Auth-Token': API_KEY },
-        timeout: 10000
+        timeout: 30000
       }
     );
 
