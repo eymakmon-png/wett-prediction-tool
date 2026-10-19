@@ -1,6 +1,8 @@
 // ============================================
-// PREDICTION ENGINE - v5
+// PREDICTION ENGINE - v6
+// Gewichte: ELO 40%, Form 28%, H2H 12%, Heimvorteil 10%, Aufstellung 10%
 // Zeitlich korrekt: nur Daten VOR dem Anpfiff
+// Aufstellungs-Stabilitaet aus match_lineups (echte Daten)
 // ============================================
 const { pool } = require('../database/init');
 
@@ -14,11 +16,11 @@ function isHistorical(cutoff) {
   return !!cutoff && new Date(cutoff) < new Date();
 }
 
-// Calculate recent form (last 5 matches before cutoff)
+// Form der letzten 5 Spiele vor dem Stichtag
 async function calculateTeamForm(teamId, cutoff = null) {
   try {
     const result = await pool.query(
-      `SELECT 
+      `SELECT
         m.id, m.home_team_id, m.away_team_id, m.home_goals, m.away_goals, m.status, m.kick_off
        FROM matches m
        WHERE (m.home_team_id = $1 OR m.away_team_id = $1)
@@ -28,22 +30,22 @@ async function calculateTeamForm(teamId, cutoff = null) {
        LIMIT 5`,
       [teamId, resolveCutoff(cutoff)]
     );
-    
+
     const matches = result.rows;
     let wins = 0, draws = 0, losses = 0;
-    
+
     for (const match of matches) {
       const isHome = match.home_team_id === teamId;
       const teamGoals = isHome ? match.home_goals : match.away_goals;
       const oppGoals = isHome ? match.away_goals : match.home_goals;
-      
+
       if (teamGoals > oppGoals) wins++;
       else if (teamGoals === oppGoals) draws++;
       else losses++;
     }
-    
+
     const formRating = (wins * 3 + draws * 1) / Math.max(matches.length, 1);
-    
+
     return {
       wins,
       draws,
@@ -68,7 +70,7 @@ async function calculateHeadToHead(homeTeamId, awayTeamId, cutoff = null) {
          WHERE home_team_id = $1 AND away_team_id = $2`,
         [homeTeamId, awayTeamId]
       );
-      
+
       if (h2hResult.rows.length > 0) {
         const data = h2hResult.rows[0];
         return {
@@ -80,7 +82,7 @@ async function calculateHeadToHead(homeTeamId, awayTeamId, cutoff = null) {
         };
       }
     }
-    
+
     // Fallback: Direktvergleiche vor dem Stichtag
     const matchResult = await pool.query(
       `SELECT m.home_team_id, m.home_goals, m.away_goals
@@ -93,21 +95,21 @@ async function calculateHeadToHead(homeTeamId, awayTeamId, cutoff = null) {
        LIMIT 10`,
       [homeTeamId, awayTeamId, resolveCutoff(cutoff)]
     );
-    
+
     const matches = matchResult.rows;
     let homeWins = 0, draws = 0, awayWins = 0;
-    
+
     for (const match of matches) {
       // Tore aus Sicht von homeTeamId (Rollen können in alten Spielen getauscht sein)
       const teamIsHome = match.home_team_id === homeTeamId;
       const homeG = teamIsHome ? match.home_goals : match.away_goals;
       const awayG = teamIsHome ? match.away_goals : match.home_goals;
-      
+
       if (homeG > awayG) homeWins++;
       else if (homeG === awayG) draws++;
       else awayWins++;
     }
-    
+
     return {
       homeWins,
       draws,
@@ -121,37 +123,53 @@ async function calculateHeadToHead(homeTeamId, awayTeamId, cutoff = null) {
   }
 }
 
-// Spielerstärke aus Ratings vor dem Stichtag
-async function calculatePlayerStrength(teamId, cutoff = null) {
+// NEU: Aufstellungs-Stabilität
+// Anteil der Spieler, die in mindestens 3 der letzten 5 Spiele vor dem Anpfiff
+// in der Startelf standen, bezogen auf 11. Hoch = eingespielte Mannschaft.
+// Neutral (0.5), wenn weniger als 3 Spiele mit Aufstellung vorliegen.
+async function calculateLineupStability(teamId, cutoff = null) {
   try {
-    const result = await pool.query(
-      `SELECT AVG(pp.rating) as avg_rating, COUNT(pp.id) as perf_count
-       FROM player_performance pp
-       JOIN matches m ON m.id = pp.match_id
-       WHERE pp.team_id = $1
-       AND pp.rating > 0
-       AND m.kick_off < $2`,
+    const last = await pool.query(
+      `SELECT m.id FROM matches m
+       WHERE m.status = 'FINISHED'
+       AND m.kick_off < $2
+       AND (m.home_team_id = $1 OR m.away_team_id = $1)
+       ORDER BY m.kick_off DESC
+       LIMIT 5`,
       [teamId, resolveCutoff(cutoff)]
     );
+    const matchIds = last.rows.map(r => r.id);
+    if (matchIds.length === 0) return { stability: 0.5, matchesWithLineup: 0 };
 
-    const data = result.rows[0];
-    
-    if (!data || data.perf_count === 0) {
-      return { avgRating: 6.0, performanceCount: 0, playerStrength: 0 };
-    }
-    
-    const avgRating = parseFloat(data.avg_rating) || 6.0;
-    const playerStrength = (avgRating - 5) / 5;
-    
-    return {
-      avgRating: parseFloat(avgRating.toFixed(2)),
-      performanceCount: parseInt(data.perf_count),
-      playerStrength: parseFloat(playerStrength.toFixed(2))
-    };
+    const withLineup = await pool.query(
+      `SELECT COUNT(DISTINCT match_id) AS n FROM match_lineups
+       WHERE team_id = $1 AND match_id = ANY($2)`,
+      [teamId, matchIds]
+    );
+    const n = parseInt(withLineup.rows[0].n);
+    if (n < 3) return { stability: 0.5, matchesWithLineup: n };
+
+    const stable = await pool.query(
+      `SELECT COUNT(*) AS c FROM (
+         SELECT player_api_id FROM match_lineups
+         WHERE team_id = $1 AND match_id = ANY($2)
+         GROUP BY player_api_id
+         HAVING COUNT(*) >= 3
+       ) t`,
+      [teamId, matchIds]
+    );
+    const c = parseInt(stable.rows[0].c);
+
+    return { stability: Math.min(1, c / 11), matchesWithLineup: n };
   } catch (error) {
-    console.error('Error calculating player strength:', error.message);
-    return { avgRating: 6.0, performanceCount: 0, playerStrength: 0 };
+    console.error('Error calculating lineup stability:', error.message);
+    return { stability: 0.5, matchesWithLineup: 0 };
   }
+}
+
+// Alte Spielerstärke (Noten) - nicht mehr in der Berechnung, nur noch für Kompatibilität exportiert
+async function calculatePlayerStrength(teamId, cutoff = null) {
+  return { avgRating: 6.0, performanceCount: 0, playerStrength: 0 };
 }
 
 // Basic ELO
@@ -160,7 +178,7 @@ function calculateWinProbability(homeElo, awayElo) {
   const homeProb = 1 / (1 + Math.pow(10, -diff / 400));
   const awayProb = 1 - homeProb;
   const drawProb = 0.25;
-  
+
   return {
     homeWin: homeProb * 0.75,
     draw: drawProb,
@@ -172,7 +190,7 @@ function calculateWinProbability(homeElo, awayElo) {
 function calculateOverUnder2_5(homeTeamId, awayTeamId, form1, form2) {
   const avgGoals = (form1.formRating + form2.formRating) / 2 * 1.5;
   const over25Prob = Math.min(0.9, Math.max(0.1, avgGoals / 3.5));
-  
+
   return {
     over2_5: over25Prob,
     under2_5: 1 - over25Prob
@@ -185,68 +203,72 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
     const homeFormRes = await calculateTeamForm(homeTeamId, cutoff);
     const awayFormRes = await calculateTeamForm(awayTeamId, cutoff);
     const h2hRes = await calculateHeadToHead(homeTeamId, awayTeamId, cutoff);
-    const homePlayerRes = await calculatePlayerStrength(homeTeamId, cutoff);
-    const awayPlayerRes = await calculatePlayerStrength(awayTeamId, cutoff);
-    
+    const homeLineup = await calculateLineupStability(homeTeamId, cutoff);
+    const awayLineup = await calculateLineupStability(awayTeamId, cutoff);
+
     // Getrennte Abfragen: feste Zuordnung Heim/Auswärts
     const homeEloRes = await pool.query('SELECT elo_rating FROM teams WHERE id = $1', [homeTeamId]);
     const awayEloRes = await pool.query('SELECT elo_rating FROM teams WHERE id = $1', [awayTeamId]);
-    
+
     const homeElo = homeEloRes.rows[0]?.elo_rating || 1500;
     const awayElo = awayEloRes.rows[0]?.elo_rating || 1500;
-    
+
     const eloProbs = calculateWinProbability(homeElo, awayElo);
-    
-    // Form factor (25%)
+
+    // Form (28 %)
     const formFactor = (homeFormRes.formRating - awayFormRes.formRating) / 10;
-    
-    // H2H factor (12%)
-    const h2hFactor = h2hRes.matchesPlayed > 0 
+
+    // H2H (12 %)
+    const h2hFactor = h2hRes.matchesPlayed > 0
       ? (h2hRes.homeWins - h2hRes.awayWins) / (h2hRes.matchesPlayed * 2)
       : 0;
-    
-    // Player factor (18%)
-    const playerFactor = (homePlayerRes.playerStrength - awayPlayerRes.playerStrength) / 2;
-    
-    // Home advantage (10%)
+
+    // Aufstellung (10 %): Differenz der Stabilität, neutral bei fehlenden Daten
+    const lineupFactor = (homeLineup.stability - awayLineup.stability) / 2;
+
+    // Heimvorteil (10 %)
     const homeAdvantage = 0.05;
 
-    // WEIGHTS (Sum = 100%): ELO 35%, Form 25%, H2H 12%, Home 10%, Player 18%
+    // WEIGHTS (Summe = 100%): ELO 40%, Form 28%, H2H 12%, Heimvorteil 10%, Aufstellung 10%
     const homeWinProb = Math.min(
       0.95,
       Math.max(
         0.05,
-        eloProbs.homeWin * 0.35 +
-        (0.5 + formFactor * 0.25) * 0.25 +
+        eloProbs.homeWin * 0.40 +
+        (0.5 + formFactor * 0.28) * 0.28 +
         (0.5 + h2hFactor * 0.12) * 0.12 +
-        (0.5 + playerFactor * 0.18) * 0.18 +
+        (0.5 + lineupFactor * 0.10) * 0.10 +
         homeAdvantage * 0.10
       )
     );
-    
+
     const awayWinProb = Math.min(
       0.95,
       Math.max(
         0.05,
-        eloProbs.awayWin * 0.35 +
-        (0.5 - formFactor * 0.25) * 0.25 +
+        eloProbs.awayWin * 0.40 +
+        (0.5 - formFactor * 0.28) * 0.28 +
         (0.5 - h2hFactor * 0.12) * 0.12 +
-        (0.5 - playerFactor * 0.18) * 0.18
+        (0.5 - lineupFactor * 0.10) * 0.10
       )
     );
-    
+
     const drawProb = 1 - homeWinProb - awayWinProb;
-    
+
     return {
       homeWinProb: parseFloat(homeWinProb.toFixed(4)),
       drawProb: parseFloat(drawProb.toFixed(4)),
       awayWinProb: parseFloat(awayWinProb.toFixed(4)),
       factors: {
-        eloWeight: 0.35,
-        formWeight: 0.25,
+        eloWeight: 0.40,
+        formWeight: 0.28,
         h2hWeight: 0.12,
         homeWeight: 0.10,
-        playerWeight: 0.18
+        lineupWeight: 0.10
+      },
+      lineup: {
+        home: homeLineup,
+        away: awayLineup
       },
       h2hSource: h2hRes.source
     };
@@ -259,12 +281,12 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
 // Recommendation
 function generateRecommendation(homeWinProb, drawProb, awayWinProb, over25Prob) {
   const maxProb = Math.max(homeWinProb, drawProb, awayWinProb);
-  
+
   if (maxProb < 0.4) return 'SKIP - Low confidence';
   if (homeWinProb === maxProb && homeWinProb > 0.6) return `HOME WIN - ${(homeWinProb * 100).toFixed(0)}%`;
   if (drawProb === maxProb && drawProb > 0.4) return `DRAW - ${(drawProb * 100).toFixed(0)}%`;
   if (awayWinProb === maxProb && awayWinProb > 0.6) return `AWAY WIN - ${(awayWinProb * 100).toFixed(0)}%`;
-  
+
   return 'MIXED - Wait for better odds';
 }
 
@@ -278,7 +300,7 @@ async function calculateAllPredictions(homeTeamId, awayTeamId, matchId) {
     const form1 = await calculateTeamForm(homeTeamId, cutoff);
     const form2 = await calculateTeamForm(awayTeamId, cutoff);
     const ou = calculateOverUnder2_5(homeTeamId, awayTeamId, form1, form2);
-    
+
     return {
       predictions: {
         home_win_prob: winProbs.homeWinProb,
@@ -294,6 +316,7 @@ async function calculateAllPredictions(homeTeamId, awayTeamId, matchId) {
         ou.over2_5
       ),
       factors: winProbs.factors,
+      lineup: winProbs.lineup,
       h2hSource: winProbs.h2hSource
     };
   } catch (error) {
@@ -319,5 +342,6 @@ module.exports = {
   calculateTeamForm,
   calculateHeadToHead,
   calculateImprovedWinProbability,
+  calculateLineupStability,
   calculatePlayerStrength
 };
