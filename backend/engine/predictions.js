@@ -1,10 +1,13 @@
 // ============================================
-// PREDICTION ENGINE - v6
+// PREDICTION ENGINE - v7
 // Gewichte: ELO 40%, Form 28%, H2H 12%, Heimvorteil 10%, Aufstellung 10%
+// NEU: Unentschieden wird explizit berechnet (nicht mehr als Rest)
 // Zeitlich korrekt: nur Daten VOR dem Anpfiff
-// Aufstellungs-Stabilitaet aus match_lineups (echte Daten)
 // ============================================
 const { pool } = require('../database/init');
+
+// Basisquote für Unentschieden (Annahme, gegen matches-Tabelle prüfen)
+const DRAW_BASE = 0.25;
 
 // Stichtag: Anpfiff des betrachteten Spiels, sonst jetzt
 function resolveCutoff(cutoff) {
@@ -123,7 +126,7 @@ async function calculateHeadToHead(homeTeamId, awayTeamId, cutoff = null) {
   }
 }
 
-// NEU: Aufstellungs-Stabilität
+// Aufstellungs-Stabilität
 // Anteil der Spieler, die in mindestens 3 der letzten 5 Spiele vor dem Anpfiff
 // in der Startelf standen, bezogen auf 11. Hoch = eingespielte Mannschaft.
 // Neutral (0.5), wenn weniger als 3 Spiele mit Aufstellung vorliegen.
@@ -197,7 +200,7 @@ function calculateOverUnder2_5(homeTeamId, awayTeamId, form1, form2) {
   };
 }
 
-// Win probability mit Stichtag
+// Gewinnwahrscheinlichkeiten mit explizitem Unentschieden
 async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = null) {
   try {
     const homeFormRes = await calculateTeamForm(homeTeamId, cutoff);
@@ -229,35 +232,41 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
     // Heimvorteil (10 %)
     const homeAdvantage = 0.05;
 
-    // WEIGHTS (Summe = 100%): ELO 40%, Form 28%, H2H 12%, Heimvorteil 10%, Aufstellung 10%
-    const homeWinProb = Math.min(
-      0.95,
-      Math.max(
-        0.05,
-        eloProbs.homeWin * 0.40 +
-        (0.5 + formFactor * 0.28) * 0.28 +
-        (0.5 + h2hFactor * 0.12) * 0.12 +
-        (0.5 + lineupFactor * 0.10) * 0.10 +
-        homeAdvantage * 0.10
-      )
-    );
+    // Schritt 1: Rohwerte für Heim- und Auswärtssieg (ohne Unentschieden)
+    const rawHome =
+      eloProbs.homeWin * 0.40 +
+      (0.5 + formFactor * 0.28) * 0.28 +
+      (0.5 + h2hFactor * 0.12) * 0.12 +
+      (0.5 + lineupFactor * 0.10) * 0.10 +
+      homeAdvantage * 0.10;
 
-    const awayWinProb = Math.min(
-      0.95,
-      Math.max(
-        0.05,
-        eloProbs.awayWin * 0.40 +
-        (0.5 - formFactor * 0.28) * 0.28 +
-        (0.5 - h2hFactor * 0.12) * 0.12 +
-        (0.5 - lineupFactor * 0.10) * 0.10
-      )
-    );
+    const rawAway =
+      eloProbs.awayWin * 0.40 +
+      (0.5 - formFactor * 0.28) * 0.28 +
+      (0.5 - h2hFactor * 0.12) * 0.12 +
+      (0.5 - lineupFactor * 0.10) * 0.10;
 
-    const drawProb = 1 - homeWinProb - awayWinProb;
+    const total = rawHome + rawAway;
+    if (total <= 0) {
+      return { homeWinProb: 0.4, drawProb: DRAW_BASE, awayWinProb: 0.33 };
+    }
+
+    // Schritt 2: Unentschieden explizit berechnen
+    // Ausgeglichene Teams -> höherer Anteil, klare Favoriten -> niedriger
+    const balance = 1 - Math.abs(rawHome - rawAway) / total;
+    const drawProb = DRAW_BASE * (0.8 + 0.4 * balance);
+
+    // Schritt 3: Heim und Auswärts auf den restlichen Anteil skalieren (Summe = 1)
+    const homeWinRaw = (1 - drawProb) * (rawHome / total);
+    const awayWinRaw = (1 - drawProb) * (rawAway / total);
+
+    const homeWinProb = Math.min(0.95, Math.max(0.05, homeWinRaw));
+    const awayWinProb = Math.min(0.95, Math.max(0.05, awayWinRaw));
+    const drawFinal = 1 - homeWinProb - awayWinProb;
 
     return {
       homeWinProb: parseFloat(homeWinProb.toFixed(4)),
-      drawProb: parseFloat(drawProb.toFixed(4)),
+      drawProb: parseFloat(drawFinal.toFixed(4)),
       awayWinProb: parseFloat(awayWinProb.toFixed(4)),
       factors: {
         eloWeight: 0.40,
