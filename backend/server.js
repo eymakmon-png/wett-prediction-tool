@@ -827,6 +827,17 @@ app.get('/api/admin/sync-lineups', async (req, res) => {
   }
 });
 
+// ELO-Historie neu berechnen (abgeleitete Tabelle, beliebig oft ausführbar)
+app.get('/api/admin/rebuild-elo', async (req, res) => {
+  try {
+    const { rebuildEloHistory } = require('./services/eloHistory');
+    const result = await rebuildEloHistory();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
