@@ -838,6 +838,17 @@ app.get('/api/admin/rebuild-elo', async (req, res) => {
   }
 });
 
+// Backtest: Modell vs. einfache Regeln (nur lesend)
+app.get('/api/admin/backtest', async (req, res) => {
+  try {
+    const { runBacktest } = require('./services/backtest');
+    const result = await runBacktest();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // Serve Dashboard
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
