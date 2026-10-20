@@ -1,13 +1,15 @@
 // ============================================
-// PREDICTION ENGINE - v7
+// PREDICTION ENGINE - v8
 // Gewichte: ELO 40%, Form 28%, H2H 12%, Heimvorteil 10%, Aufstellung 10%
-// NEU: Unentschieden wird explizit berechnet (nicht mehr als Rest)
+// NEU: ELO kommt aus team_elo_history (Stand vor dem Anpfiff), nicht aus teams
+// Unentschieden explizit berechnet, DRAW_BASE 0.25
 // Zeitlich korrekt: nur Daten VOR dem Anpfiff
 // ============================================
 const { pool } = require('../database/init');
 
-// Basisquote für Unentschieden (Annahme, gegen matches-Tabelle prüfen)
+// Basisquote für Unentschieden (Ist-Quote aus 123 Spielen: 25,2 %)
 const DRAW_BASE = 0.25;
+const START_ELO = 1500;
 
 // Stichtag: Anpfiff des betrachteten Spiels, sonst jetzt
 function resolveCutoff(cutoff) {
@@ -17,6 +19,27 @@ function resolveCutoff(cutoff) {
 // Vergangenes Spiel = Backtest-Fall (keine h2h_history nutzen)
 function isHistorical(cutoff) {
   return !!cutoff && new Date(cutoff) < new Date();
+}
+
+// ELO eines Teams zum Stichtag: elo_after des letzten Spiels VOR dem Anpfiff
+async function getEloBeforeCutoff(teamId, cutoff = null) {
+  try {
+    const res = await pool.query(
+      `SELECT h.elo_after
+       FROM team_elo_history h
+       JOIN matches m ON m.id = h.match_id
+       WHERE h.team_id = $1
+       AND m.kick_off < $2
+       ORDER BY m.kick_off DESC, m.id DESC
+       LIMIT 1`,
+      [teamId, resolveCutoff(cutoff)]
+    );
+    if (res.rows.length === 0) return START_ELO;
+    return parseFloat(res.rows[0].elo_after);
+  } catch (error) {
+    console.error('Error reading ELO history:', error.message);
+    return START_ELO;
+  }
 }
 
 // Form der letzten 5 Spiele vor dem Stichtag
@@ -175,16 +198,15 @@ async function calculatePlayerStrength(teamId, cutoff = null) {
   return { avgRating: 6.0, performanceCount: 0, playerStrength: 0 };
 }
 
-// Basic ELO
+// ELO-basierte Basiswahrscheinlichkeiten (Heim/Auswärts, Unentschieden fest 25 %)
 function calculateWinProbability(homeElo, awayElo) {
   const diff = homeElo - awayElo;
   const homeProb = 1 / (1 + Math.pow(10, -diff / 400));
   const awayProb = 1 - homeProb;
-  const drawProb = 0.25;
 
   return {
     homeWin: homeProb * 0.75,
-    draw: drawProb,
+    draw: 0.25,
     awayWin: awayProb * 0.75
   };
 }
@@ -209,12 +231,9 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
     const homeLineup = await calculateLineupStability(homeTeamId, cutoff);
     const awayLineup = await calculateLineupStability(awayTeamId, cutoff);
 
-    // Getrennte Abfragen: feste Zuordnung Heim/Auswärts
-    const homeEloRes = await pool.query('SELECT elo_rating FROM teams WHERE id = $1', [homeTeamId]);
-    const awayEloRes = await pool.query('SELECT elo_rating FROM teams WHERE id = $1', [awayTeamId]);
-
-    const homeElo = homeEloRes.rows[0]?.elo_rating || 1500;
-    const awayElo = awayEloRes.rows[0]?.elo_rating || 1500;
+    // ELO zum Stichtag (NEU: aus team_elo_history)
+    const homeElo = await getEloBeforeCutoff(homeTeamId, cutoff);
+    const awayElo = await getEloBeforeCutoff(awayTeamId, cutoff);
 
     const eloProbs = calculateWinProbability(homeElo, awayElo);
 
@@ -248,7 +267,7 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
 
     const total = rawHome + rawAway;
     if (total <= 0) {
-      return { homeWinProb: 0.4, drawProb: DRAW_BASE, awayWinProb: 0.33 };
+      return { homeWinProb: 0.4, drawProb: DRAW_BASE, awayWinProb: 0.35, factors: null, lineup: null, h2hSource: 'error' };
     }
 
     // Schritt 2: Unentschieden explizit berechnen
@@ -279,11 +298,15 @@ async function calculateImprovedWinProbability(homeTeamId, awayTeamId, cutoff = 
         home: homeLineup,
         away: awayLineup
       },
+      elo: {
+        home: homeElo,
+        away: awayElo
+      },
       h2hSource: h2hRes.source
     };
   } catch (error) {
     console.error('Error calculating improved win probability:', error.message);
-    return { homeWinProb: 0.5, drawProb: 0.25, awayWinProb: 0.25 };
+    return { homeWinProb: 0.4, drawProb: DRAW_BASE, awayWinProb: 0.35 };
   }
 }
 
@@ -326,6 +349,7 @@ async function calculateAllPredictions(homeTeamId, awayTeamId, matchId) {
       ),
       factors: winProbs.factors,
       lineup: winProbs.lineup,
+      elo: winProbs.elo,
       h2hSource: winProbs.h2hSource
     };
   } catch (error) {
@@ -352,5 +376,6 @@ module.exports = {
   calculateHeadToHead,
   calculateImprovedWinProbability,
   calculateLineupStability,
+  getEloBeforeCutoff,
   calculatePlayerStrength
 };
